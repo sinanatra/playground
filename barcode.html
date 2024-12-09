@@ -8,10 +8,10 @@
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
     <script>
-        const gridX = 100;
-        let gridY = 10;
+        let gridX = 200;
+        let gridY = 2;
         let speeds = [];
-
+        let rowNoises = [];
         let mic, fft;
 
         function setup() {
@@ -26,14 +26,13 @@
             mic.start();
             fft = new p5.FFT(0.6, 256);
             fft.setInput(mic);
-
-
-            updateSpeeds()
+            updateSpeeds();
+            updateRowNoises();
         }
 
 
 
-        const threshold = 150;
+        const threshold = 100;
         const offset = 1000;
         let lastPeakTime = 0;
 
@@ -46,9 +45,10 @@
             let peak = Math.max(...spectrum);
 
             if (peak > threshold && millis() - lastPeakTime > offset) {
-                gridY = floor(random([2, 3, 4, 5, 10, 20]));
-
-                updateSpeeds()
+                gridY = floor(random([2, 3, 4, 5, 10]));
+                gridX = floor(random([200, 300, 400, 500, 1000]));
+                updateSpeeds();
+                updateRowNoises();
                 lastPeakTime = millis();
             }
 
@@ -62,14 +62,14 @@
             for (let y = 0; y < dynamicRows; y++) {
 
                 const velocity = speeds[y] * 0.05;
+                const stepNoise = rowNoises[y % rowNoises.length];
 
                 for (let x = 0; x < gridX; x++) {
 
                     const px = x * tileWidth;
                     const py = y * tileHeight;
 
-
-                    const randVal = pattern(x, y, time, velocity);
+                    const randVal = pattern(x, y, time, velocity, stepNoise);
 
                     const brightness = map(randVal, 0, 1, 0, 255);
                     const rectHeight = map(randVal, 0, 1, tileHeight * 0.1, tileHeight);
@@ -89,6 +89,13 @@
             }
         }
 
+        function updateRowNoises() {
+            rowNoises = [];
+            for (let i = 0; i < gridY; i++) {
+                rowNoises.push(random(0.1, 0.9));
+            }
+        }
+
         function generateSeries(base, startPower, endPower) {
             let series = [];
             for (let i = startPower; i <= endPower; i++) {
@@ -102,14 +109,14 @@
         }
 
 
-        function pattern(x, y, time, velocity) {
+        function pattern(x, y, time, velocity, stepNoise) {
             const st = createVector(x, y);
             const vel = createVector(-time * max(gridX, gridY) * velocity, 0);
-            const offset = createVector(0.1, 0);
+            const offset = createVector(0.5, 0);
 
 
             const gridPos = createVector(floor(st.x + vel.x), floor(st.y + vel.y));
-            return step(0.5, random2D(gridPos));
+            return step(stepNoise, random2D(gridPos));
         }
 
 
