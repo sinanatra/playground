@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+        const gridX = 100;
+        let gridY = 10;
+        let speeds = [];
+
+        let mic, fft;
+
+        function setup() {
+            pixelDensity(1);
+            createCanvas(windowWidth, windowHeight);
+            noStroke();
+            rectMode(CORNER);
+
+
+            userStartAudio();
+            mic = new p5.AudioIn();
+            mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+
+            updateSpeeds()
+        }
+
+
+
+        const threshold = 150;
+        const offset = 1000;
+        let lastPeakTime = 0;
+
+        function draw() {
+            background(0);
+
+            let spectrum = fft.analyze();
+            let bassEnergy = fft.getEnergy("bass");
+            const activity = map(bassEnergy, 0, 255, 0, 1);
+            let peak = Math.max(...spectrum);
+
+            if (peak > threshold && millis() - lastPeakTime > offset) {
+                gridY = floor(random([2, 3, 4, 5, 10, 20]));
+
+                updateSpeeds()
+                lastPeakTime = millis();
+            }
+
+            let dynamicRows = activity > 0.7 ? floor(map(activity, 0, 1, gridY, gridY + 6)) : gridY;
+
+            const tileWidth = width / gridX;
+            const tileHeight = height / dynamicRows;
+
+            const time = millis() * 0.001;
+
+            for (let y = 0; y < dynamicRows; y++) {
+
+                const velocity = speeds[y] * 0.05;
+
+                for (let x = 0; x < gridX; x++) {
+
+                    const px = x * tileWidth;
+                    const py = y * tileHeight;
+
+
+                    const randVal = pattern(x, y, time, velocity);
+
+                    const brightness = map(randVal, 0, 1, 0, 255);
+                    const rectHeight = map(randVal, 0, 1, tileHeight * 0.1, tileHeight);
+
+
+                    fill(brightness);
+                    stroke(0);
+                    rect(px, py, tileWidth, rectHeight);
+                }
+            }
+        }
+
+        function updateSpeeds() {
+            speeds = [];
+            for (let i = 0; i < gridY; i++) {
+                speeds.push(random(-2, 2));
+            }
+        }
+
+        function generateSeries(base, startPower, endPower) {
+            let series = [];
+            for (let i = startPower; i <= endPower; i++) {
+                series.push(Math.pow(base, i));
+            }
+            return series;
+        }
+
+        function random2D(st) {
+            return fract(sin(st.x * 12.9898 + st.y * 78.233) * 43758.5453123);
+        }
+
+
+        function pattern(x, y, time, velocity) {
+            const st = createVector(x, y);
+            const vel = createVector(-time * max(gridX, gridY) * velocity, 0);
+            const offset = createVector(0.1, 0);
+
+
+            const gridPos = createVector(floor(st.x + vel.x), floor(st.y + vel.y));
+            return step(0.5, random2D(gridPos));
+        }
+
+
+        function step(edge, value) {
+            return value < edge ? 0.0 : 1.0;
+        }
+
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</head>
+
+<header>
+    <a href="/datamosh.html">Datamosh</a>
+    <a href="/thresh.html">Threshold</a>
+    <a href="/barcode.html">Barcode</a>
+    <a href="/vol.html">Volume</a>
+</header>
+
+<body></body>
+
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>

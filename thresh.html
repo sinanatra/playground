@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+        let mic, fft, vid;
+        let videoUrls = ["video_2.mp4"];
+        let currentVideoIndex = 0;
+        let switchInterval = 5 * 1000;
+        let lastSwitchTime = 0;
+        let lastPeakTime = 0;
+        let buffer = [];
+        let graphics;
+
+        const threshold = 150;
+        const offset = 200;
+
+        async function setup() {
+            pixelDensity(1);
+            createCanvas(windowWidth, windowHeight);
+            textAlign(CENTER, CENTER);
+
+
+            graphics = createGraphics(windowWidth, windowHeight);
+            userStartAudio();
+
+            mic = new p5.AudioIn();
+            await mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+            await loadVideo();
+            background(0)
+
+        }
+
+        function mousePressed() {
+            switchVideo()
+            initializeAudioAndVideo();
+        }
+
+
+        async function loadVideo() {
+            if (vid) vid.remove();
+            vid = createVideo(videoUrls[currentVideoIndex]);
+            vid.size(windowWidth, windowHeight);
+            vid.volume(0);
+            vid.loop();
+            vid.hide();
+
+            vid.elt.onloadedmetadata = () => {
+                let randomStartTime = random(0, vid.duration());
+                vid.time(randomStartTime);
+                console.log(`Switched to video ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`);
+            };
+        }
+
+        let prevFrame;
+        let frameCounter = 0;
+
+        function draw() {
+            if (!vid || !vid.elt.readyState || vid.elt.paused) return;
+
+            let spectrum = fft.analyze();
+            let bassEnergy = fft.getEnergy("bass");
+            let peak = Math.max(...spectrum);
+            let peakIndex = spectrum.indexOf(peak);
+
+            let bpm = map(bassEnergy, 0, 255, 60, 180);
+            let speed = map(bpm, 60, 180, 0.1, 2);
+            vid.speed(speed);
+
+            if (peak > threshold && millis() - lastPeakTime > offset) {
+                // let direction = int(map(peakIndex, 0, 255, 1, 10));
+                // vid.time(vid.time() + direction);
+                lastPeakTime = millis();
+            }
+
+            if (millis() - lastSwitchTime > switchInterval) {
+                background(0);
+                lastSwitchTime = millis();
+            }
+
+            const vW = windowWidth;
+            const vH = windowHeight;
+            if (vW === 0 || vH === 0) return;
+
+            frameCounter++;
+
+            if (frameCounter % 2 !== 0) {
+                return;
+            }
+
+            let currentFrame = vid.get(0, 0, vW, vH);
+            currentFrame.filter(GRAY);
+
+
+            if (prevFrame) {
+                currentFrame.loadPixels();
+                prevFrame.loadPixels();
+
+                if (currentFrame.pixels.length > 0 && prevFrame.pixels.length > 0) {
+                    let totalDiff = 0;
+                    let numPixels = graphics.width * graphics.height;
+
+                    for (let y = 0; y < graphics.height; y++) {
+                        for (let x = 0; x < graphics.width; x++) {
+                            let index = (x + y * graphics.width) * 4;
+
+                            let r1 = currentFrame.pixels[index];
+                            let g1 = currentFrame.pixels[index + 1];
+                            let b1 = currentFrame.pixels[index + 2];
+
+                            let r2 = prevFrame.pixels[index];
+                            let g2 = prevFrame.pixels[index + 1];
+                            let b2 = prevFrame.pixels[index + 2];
+
+                            let diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2);
+                            totalDiff += diff;
+                        }
+                    }
+
+                    let averageDiff = totalDiff / numPixels;
+
+                    if (averageDiff > 80) {
+                        background(0, 0.5);
+                    } else {
+                        graphics.clear();
+                        graphics.image(currentFrame, 0, 0);
+                        graphics.loadPixels();
+
+                        for (let y = 0; y < graphics.height; y++) {
+                            for (let x = 0; x < graphics.width; x++) {
+                                let index = (x + y * graphics.width) * 4;
+
+                                let r1 = currentFrame.pixels[index];
+                                let g1 = currentFrame.pixels[index + 1];
+                                let b1 = currentFrame.pixels[index + 2];
+
+                                let r2 = prevFrame.pixels[index];
+                                let g2 = prevFrame.pixels[index + 1];
+                                let b2 = prevFrame.pixels[index + 2];
+
+                                let diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2);
+
+                                if (diff > 80) {
+                                    graphics.pixels[index + 3] = 255;
+                                } else {
+                                    graphics.pixels[index + 3] = 0;
+                                }
+                            }
+                        }
+
+                        graphics.updatePixels();
+
+                        image(graphics, 0, 0);
+                    }
+                }
+            }
+
+            prevFrame = currentFrame.get();
+        }
+
+
+        function switchVideo() {
+            currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
+            loadVideo();
+
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            graphics = createGraphics(windowWidth, windowHeight);
+            if (vid) vid.size(windowWidth, windowHeight);
+        }
+    </script>
+</head>
+
+<header>
+    <a href="/datamosh.html">Datamosh</a>
+    <a href="/thresh.html">Threshold</a>
+    <a href="/barcode.html">Barcode</a>
+    <a href="/vol.html">Volume</a>
+</header>
+
+<body></body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>

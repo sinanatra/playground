@@ -1,0 +1,15 @@
+*.mp4
+Icon
+.DS_Store
+node_modules
+yarn-error.log
+/.svelte-kit
+/build
+/functions
+vendor
+.cache
+/content/*
+_backup
+/package
+package-lock.json
+.env

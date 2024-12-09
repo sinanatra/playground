@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+        let mic, fft;
+        const rowCount = 50;
+        let columnCount = 2;
+        let speeds = [];
+        let toggleRectWidth = false;
+
+        function setup() {
+            pixelDensity(1);
+            createCanvas(windowWidth, windowHeight);
+            noStroke();
+            rectMode(CENTER);
+
+
+            userStartAudio();
+            mic = new p5.AudioIn();
+            mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+            updateSpeeds();
+        }
+
+        function draw() {
+            background(0);
+
+            if (frameCount % 120 === 0) {
+                columnCount = floor(random(2, 10));
+                updateSpeeds();
+                toggleRectWidth = !toggleRectWidth;
+            }
+
+            let spectrum = fft.analyze();
+            let bassEnergy = fft.getEnergy("bass");
+
+            const bassThreshold = 30;
+            const activity = bassEnergy > bassThreshold ? map(bassEnergy, bassThreshold, 255, 0, 1) : 0;
+
+            let columnWidth = width / columnCount;
+            let rowHeight = height / rowCount;
+
+            for (let x = 0; x < columnCount; x++) {
+                let columnSpeed = speeds[x];
+
+                for (let y = 0; y < rowCount; y++) {
+                    let px = x * columnWidth + columnWidth / 2;
+                    let py = y * rowHeight + rowHeight / 2;
+
+
+                    let randVal = pseudoRandom(x, y, frameCount * columnSpeed);
+
+
+                    let rectWidth = toggleRectWidth ? map(randVal * activity, 0, 0.5, 5, columnWidth) : columnWidth;
+
+                    const brightness = map(randVal, 0, 1, 0, 255);
+
+                    stroke(0)
+                    // strokeWeight(0.5)
+                    fill(brightness);
+                    rect(px, py, rectWidth, rowHeight);
+                }
+            }
+        }
+
+        function updateSpeeds() {
+            speeds = [];
+            for (let i = 0; i < columnCount; i++) {
+                speeds.push(random(0.0000005, 0.000002));
+            }
+        }
+
+        function pseudoRandom(x, y, t = 0) {
+            let seed = sin(x * 12.9898 + y * 78.233 + t) * 43758.5453123;
+            return seed - floor(seed);
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+
+</head>
+
+<header>
+    <a href="/datamosh.html">Datamosh</a>
+    <a href="/thresh.html">Threshold</a>
+    <a href="/barcode.html">Barcode</a>
+    <a href="/vol.html">Volume</a>
+
+</header>
+
+<body></body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>

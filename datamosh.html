@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+        let mic, fft, vid;
+        let videoUrls = ["video_1.mp4",];
+        videoUrls = shuffleArray(videoUrls);
+
+        let currentVideoIndex = 0;
+        let switchInterval = 180 * 1000;
+        // let switchInterval = 60 * 1000;
+
+        let lastSwitchTime = 0;
+        let lastPeakTime = 0;
+
+        let randHue = 360;
+        let threshold = 150;
+
+        let encoder, decoder;
+        let isWebCodecsReady = false;
+        let ctx;
+
+        let datamoshRepeats = 3;
+        let isVideoSwitching = false;
+        let isFrameReady = false;
+
+        async function setup() {
+            colorMode(HSL, 360, 100, 100);
+            createCanvas(windowWidth, windowHeight);
+
+
+            textSize(24);
+            textAlign(CENTER, CENTER);
+            fill("black");
+            text("Click to Start", width / 2, height / 2);
+
+
+            userStartAudio();
+            ctx = canvas.getContext("2d");
+            frameRate(60);
+
+            mic = new p5.AudioIn();
+            await mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+            await loadVideo();
+        }
+
+        function mousePressed() {
+            switchVideo()
+            initializeAudioAndVideo();
+        }
+
+        function switchVideo() {
+            currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
+            loadVideo();
+            lastSwitchTime = millis();
+        }
+
+        async function initializeAudioAndVideo() {
+            mic = new p5.AudioIn();
+            await mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+            await loadVideo();
+        }
+
+        async function loadVideo() {
+            if (vid) {
+                vid.remove();
+            }
+
+            isVideoSwitching = true;
+            isFrameReady = false;
+
+            vid = createVideo(videoUrls[currentVideoIndex]);
+            vid.size(windowWidth, windowHeight);
+            vid.volume(0);
+            vid.hide();
+
+            vid.elt.onloadedmetadata = () => {
+                let randomStartTime = random(0, vid.duration());
+                vid.time(randomStartTime);
+                console.log(`Switched to video ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`);
+            };
+
+            vid.elt.onloadeddata = async () => {
+                const isSupported = await checkCodecSupport();
+                if (isSupported) {
+                    setupWebCodecs(ctx);
+                    vid.elt.play().then(() => {
+                        isWebCodecsReady = true;
+                        isVideoSwitching = false;
+                        isFrameReady = true;
+                    }).catch((error) => {
+                        console.error("Error playing video: ", error);
+                    });
+                } else {
+                    console.error("Codec not supported");
+                    isVideoSwitching = false;
+                }
+            };
+
+            vid.elt.onerror = () => {
+                console.error("Error loading video file");
+                isVideoSwitching = false;
+            };
+        }
+
+
+        function draw() {
+
+            if (!isWebCodecsReady || isVideoSwitching || !isFrameReady) return;
+
+            let spectrum = fft.analyze();
+            let peak = Math.max(...spectrum);
+            let peakIndex = spectrum.indexOf(peak);
+
+            let bassEnergy = fft.getEnergy("bass");
+            let bpm = map(bassEnergy, 0, 255, 60, 180);
+            let speed = map(bpm, 60, 180, 0.5, 2);
+            let offset = 100;
+
+            vid.speed(speed);
+
+            if (peak > threshold && millis() - lastPeakTime > offset) {
+                let direction = int(map(peakIndex, 0, 255, 1, 2));
+
+                // console.log(peakIndex)
+                if (peakIndex == 0) {
+                    datamoshRepeats = 3;
+                }
+                if (peakIndex > 0 && peakIndex <= 2) {
+                    datamoshRepeats = 1;
+                    datamoshRepeats = int(random(1, 2));
+                }
+                if (peakIndex > 2 && peakIndex < 5) {
+                    datamoshRepeats = int(random(1, 4));
+                    direction = -direction;
+                }
+                if (peakIndex >= 10) {
+                    datamoshRepeats = int(random(2, 6));
+                }
+                else {
+                    datamoshRepeats = 2;
+                    // direction = -direction;
+                }
+                vid.time(vid.time() + direction);
+                lastPeakTime = millis() + direction;
+            }
+
+            if (frameCount % 120 === 0) {
+                datamoshRepeats = 1;
+            }
+
+            if (vid.elt.readyState === 4 && !vid.elt.paused && encoder && encoder.state === "configured") {
+                try {
+                    const frame = new VideoFrame(vid.elt);
+                    encoder.encode(frame, { keyFrame: false });
+                    frame.close();
+                } catch (e) {
+                    console.error(`VideoFrame error: ${e.message} | Video ReadyState: ${vid.elt.readyState} | Paused: ${vid.elt.paused}`);
+                }
+            }
+
+
+            // if (millis() - lastSwitchTime > switchInterval) {
+            //     try {
+            //         console.log("here we go")
+            //         vid.stop();
+            //         currentVideoIndex = int(random(videoUrls.length));
+            //         setTimeout(function () {
+            //             vid = createVideo(videoUrls[currentVideoIndex]);
+            //             vid.size(windowWidth, windowHeight);
+            //             vid.volume(0);
+            //             vid.loop();
+            //             vid.hide();
+            //             // vid.time(random(0, 90));
+            //             vid.time(0);
+            //         }, 500);
+            //         lastPeakTime = 0;
+            //         lastSwitchTime = millis();
+
+            //     }
+            //     catch (e) { console.log(e) }
+            // }
+        }
+
+        async function checkCodecSupport() {
+            const config = {
+                type: "file",
+                video: {
+                    contentType: 'video/webm; codecs="vp8"',
+                    width: windowWidth,
+                    height: windowHeight,
+                    bitrate: 500000,
+                    framerate: 30
+                },
+            };
+            const mediaCapabilities = await navigator.mediaCapabilities.decodingInfo(config);
+            return mediaCapabilities.supported;
+        }
+
+        function setupWebCodecs(ctx) {
+            encoder = new VideoEncoder({
+                output: handleEncodedChunk,
+                error: (err) => console.error("Encoder error:", err),
+            });
+
+            encoder.configure({
+                codec: "vp8",
+                width: windowWidth,
+                height: windowHeight,
+            });
+
+            decoder = new VideoDecoder({
+                output: (frame) => handleDecodedFrame(frame, ctx),
+                error: (err) => console.error("Decoder error:", err),
+            });
+
+            decoder.configure({
+                codec: "vp8",
+            });
+        }
+
+        function handleEncodedChunk(chunk) {
+            if (decoder && decoder.state === "configured") {
+                for (let i = 0; i < datamoshRepeats; i++) {
+                    decoder.decode(chunk);
+                }
+            }
+        }
+
+        function handleDecodedFrame(frame, ctx) {
+            ctx.clearRect(0, 0, windowWidth, windowHeight);
+            ctx.save();
+            ctx.translate(windowWidth, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(frame, 0, 0, windowWidth, windowHeight);
+            ctx.restore();
+            frame.close();
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            if (vid) {
+                vid.size(windowWidth, windowHeight);
+            }
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+    </script>
+</head>
+
+<header>
+    <a href="/datamosh.html">Datamosh</a>
+    <a href="/thresh.html">Threshold</a>
+    <a href="/barcode.html">Barcode</a>
+    <a href="/rectangles.html">Rectangles</a>
+    <a href="/vol.html">Volume</a>
+
+</header>
+
+<body>
+</body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>
