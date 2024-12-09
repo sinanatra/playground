@@ -20,7 +20,6 @@
             noStroke();
             rectMode(CORNER);
 
-
             userStartAudio();
             mic = new p5.AudioIn();
             mic.start();
@@ -30,10 +29,8 @@
             updateRowNoises();
         }
 
-
-
         const threshold = 100;
-        const offset = 1000;
+        const offset = 500;
         let lastPeakTime = 0;
 
         function draw() {
