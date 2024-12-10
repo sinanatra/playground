@@ -67,10 +67,8 @@
                     const py = y * tileHeight;
 
                     const randVal = pattern(x, y, time, velocity, stepNoise);
-
                     const brightness = map(randVal, 0, 1, 0, 255);
                     const rectHeight = map(randVal, 0, 1, tileHeight * 0.1, tileHeight);
-
 
                     fill(brightness);
                     stroke(0);
@@ -105,7 +103,6 @@
             return fract(sin(st.x * 12.9898 + st.y * 78.233) * 43758.5453123);
         }
 
-
         function pattern(x, y, time, velocity, stepNoise) {
             const st = createVector(x, y);
             const vel = createVector(-time * max(gridX, gridY) * velocity, 0);
@@ -133,6 +130,7 @@
     <a href="thresh.html">Threshold</a>
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
+    <a href="grid.html">Grid</a>
 </header>
 
 <body></body>
@@ -151,6 +149,7 @@
         color: white;
         text-align: center;
         padding: 10px 0;
+        position: absolute;
     }
 
     header a {
