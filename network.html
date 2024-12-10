@@ -40,7 +40,7 @@
 
             if (frameCount % 120 === 0) {
                 gridCols = floor(map(activity, 0, 1, 2, 30));
-                gridRows = floor(map(activity, 0, 1, 2, 5));
+                gridRows = floor(map(activity, 0, 1, 2, 10));
                 
                 initializeGrid();
                 updateRowSpeeds();
@@ -49,7 +49,7 @@
 
             for (let i = 0; i < points.length; i++) {
                 const pointA = points[i];
-                const offsetX = map(noise(pointA.x * 0.01, pointA.y * 0.01, frameCount * 0.01), 0, 1, -cellWidth, cellWidth) * activity;
+                const offsetX = map(noise(pointA.x * 0.01, pointA.y * 0.01, frameCount * 0.01), 0, 1, -cellWidth * 10, cellWidth * 10) * activity;
 
                 const posXA = pointA.x + offsetX + rowSpeeds[floor(pointA.y / cellHeight)];
                 const posYA = pointA.y;
@@ -57,7 +57,7 @@
 
                 for (let j = i + 1; j < points.length; j++) {
                     const pointB = points[j];
-                    const offsetXB = map(noise(pointB.x * 0.01, pointB.y * 0.01, frameCount * 0.01), 0, 1, -cellWidth, cellWidth) * activity;
+                    const offsetXB = map(noise(pointB.x * 0.01, pointB.y * 0.01, frameCount * 0.01), 0, 1, -cellWidth * 10, cellWidth * 10) * activity;
 
                     const posXB = pointB.x + offsetXB + rowSpeeds[floor(pointB.y / cellHeight)];
                     const posYB = pointB.y;
@@ -69,9 +69,9 @@
                     line(posXA, posYA, posXB, posYB);
                 }
 
-                // fill(0, 0, 255);
+                fill(255, 255, 0);
                 noStroke();
-                ellipse(posXA, posYA, 10, 10);
+                ellipse(posXA, posYA, 4, 4);
             }
         }
 
