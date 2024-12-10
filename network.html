@@ -38,8 +38,8 @@
             const cellWidth = width / (gridCols - 1);
             const cellHeight = height / (gridRows - 1);
 
-            if (frameCount % 60 === 0) {
-                gridCols = floor(map(activity, 0, 1, 2, 20));
+            if (frameCount % 120 === 0) {
+                gridCols = floor(map(activity, 0, 1, 2, 30));
                 gridRows = floor(map(activity, 0, 1, 2, 5));
                 
                 initializeGrid();
