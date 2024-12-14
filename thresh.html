@@ -17,14 +17,13 @@
         let buffer = [];
         let graphics;
 
-        const threshold = 150;
+        let threshold = 150;
         const offset = 200;
 
         async function setup() {
             pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
             textAlign(CENTER, CENTER);
-
 
             graphics = createGraphics(windowWidth, windowHeight);
             userStartAudio();
@@ -34,15 +33,13 @@
             fft = new p5.FFT(0.6, 256);
             fft.setInput(mic);
             await loadVideo();
-            background(0)
-
+            background(0);
         }
 
         function mousePressed() {
-            switchVideo()
+            switchVideo();
             initializeAudioAndVideo();
         }
-
 
         async function loadVideo() {
             if (vid) vid.remove();
@@ -75,8 +72,6 @@
             vid.speed(speed);
 
             if (peak > threshold && millis() - lastPeakTime > offset) {
-                // let direction = int(map(peakIndex, 0, 255, 1, 10));
-                // vid.time(vid.time() + direction);
                 lastPeakTime = millis();
             }
 
@@ -96,7 +91,8 @@
             }
 
             let currentFrame = vid.get(0, 0, vW, vH);
-            currentFrame.filter(GRAY);
+            // currentFrame.filter(GRAY);
+            currentFrame.filter(BLUR);
 
 
             if (prevFrame) {
@@ -121,6 +117,7 @@
 
                             let diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2);
                             totalDiff += diff;
+
                         }
                     }
 
@@ -147,6 +144,11 @@
 
                                 let diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2);
 
+                                // r1 = r1 + 50; // Boost red
+                                // g1 = g1 * 0.5; // Reduce green
+                                // b1 = b1 * 0.5; // Reduce blue
+
+
                                 if (diff > 80) {
                                     graphics.pixels[index + 3] = 255;
                                 } else {
@@ -165,11 +167,9 @@
             prevFrame = currentFrame.get();
         }
 
-
         function switchVideo() {
             currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
             loadVideo();
-
         }
 
         function windowResized() {
@@ -177,6 +177,13 @@
             graphics = createGraphics(windowWidth, windowHeight);
             if (vid) vid.size(windowWidth, windowHeight);
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("threshold-slider").addEventListener("input", (event) => {
+                threshold = parseInt(event.target.value, 10);
+                document.getElementById("threshold-value").textContent = threshold;
+            });
+        });
     </script>
 </head>
 
@@ -184,8 +191,14 @@
     <a href="datamosh.html">Datamosh</a>
     <a href="thresh.html">Threshold</a>
     <a href="barcode.html">Barcode</a>
-       <a href="vol.html">Volume</a>
- <a href="network.html">Network</a></header>
+    <a href="vol.html">Volume</a>
+    <a href="network.html">Network</a>
+    <span id="controls">
+        |
+        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">150</span></label>
+        <input type="range" id="threshold-slider" min="10" max="800" step="1" value="150" />
+    </span>
+</header>
 
 <body></body>
 

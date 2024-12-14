@@ -9,12 +9,11 @@
     <script src="p5.sound.min.js"></script>
     <script>
         let mic, fft, vid;
-        let videoUrls = ["video.mp4",];
+        let videoUrls = ["video.mp4"];
         videoUrls = shuffleArray(videoUrls);
 
         let currentVideoIndex = 0;
         let switchInterval = 180 * 1000;
-        // let switchInterval = 60 * 1000;
 
         let lastSwitchTime = 0;
         let lastPeakTime = 0;
@@ -34,13 +33,6 @@
             colorMode(HSL, 360, 100, 100);
             createCanvas(windowWidth, windowHeight);
 
-
-            // textSize(24);
-            // textAlign(CENTER, CENTER);
-            // fill("black");
-            // text("Click to Start", width / 2, height / 2);
-
-
             userStartAudio();
             ctx = canvas.getContext("2d");
             frameRate(60);
@@ -54,7 +46,7 @@
         }
 
         function mousePressed() {
-            switchVideo()
+            switchVideo();
             initializeAudioAndVideo();
         }
 
@@ -115,9 +107,7 @@
             };
         }
 
-
         function draw() {
-
             if (!isWebCodecsReady || isVideoSwitching || !isFrameReady) return;
 
             let spectrum = fft.analyze();
@@ -134,12 +124,10 @@
             if (peak > threshold && millis() - lastPeakTime > offset) {
                 let direction = int(map(peakIndex, 0, 255, 1, 2));
 
-                // console.log(peakIndex)
                 if (peakIndex == 0) {
                     datamoshRepeats = 3;
                 }
                 if (peakIndex > 0 && peakIndex <= 2) {
-                    datamoshRepeats = 1;
                     datamoshRepeats = int(random(1, 2));
                 }
                 if (peakIndex > 2 && peakIndex < 5) {
@@ -148,13 +136,11 @@
                 }
                 if (peakIndex >= 10) {
                     datamoshRepeats = int(random(2, 6));
-                }
-                else {
+                } else {
                     datamoshRepeats = 2;
-                    // direction = -direction;
                 }
                 vid.time(vid.time() + direction);
-                lastPeakTime = millis() + direction;
+                lastPeakTime = millis();
             }
 
             if (frameCount % 120 === 0) {
@@ -167,31 +153,9 @@
                     encoder.encode(frame, { keyFrame: false });
                     frame.close();
                 } catch (e) {
-                    console.error(`VideoFrame error: ${e.message} | Video ReadyState: ${vid.elt.readyState} | Paused: ${vid.elt.paused}`);
+                    console.error(`VideoFrame error: ${e.message}`);
                 }
             }
-
-
-            // if (millis() - lastSwitchTime > switchInterval) {
-            //     try {
-            //         console.log("here we go")
-            //         vid.stop();
-            //         currentVideoIndex = int(random(videoUrls.length));
-            //         setTimeout(function () {
-            //             vid = createVideo(videoUrls[currentVideoIndex]);
-            //             vid.size(windowWidth, windowHeight);
-            //             vid.volume(0);
-            //             vid.loop();
-            //             vid.hide();
-            //             // vid.time(random(0, 90));
-            //             vid.time(0);
-            //         }, 500);
-            //         lastPeakTime = 0;
-            //         lastSwitchTime = millis();
-
-            //     }
-            //     catch (e) { console.log(e) }
-            // }
         }
 
         async function checkCodecSupport() {
@@ -263,6 +227,13 @@
             }
             return array;
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("threshold-slider").addEventListener("input", (event) => {
+                threshold = parseInt(event.target.value, 10);
+                document.getElementById("threshold-value").textContent = threshold;
+            });
+        });
     </script>
 </head>
 
@@ -270,8 +241,13 @@
     <a href="datamosh.html">Datamosh</a>
     <a href="thresh.html">Threshold</a>
     <a href="barcode.html">Barcode</a>
-       <a href="vol.html">Volume</a>
- <a href="network.html">Network</a>
+    <a href="vol.html">Volume</a>
+    <a href="network.html">Network</a>
+    <span id="controls">
+        |
+        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">150</span></label>
+        <input type="range" id="threshold-slider" min="10" max="800" step="1" value="150" />
+    </span>
 </header>
 
 <body>
@@ -283,7 +259,6 @@
         padding: 0;
         overflow: hidden;
         font-family: Arial, Helvetica, sans-serif;
-
     }
 
     header {

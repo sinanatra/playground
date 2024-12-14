@@ -14,6 +14,10 @@
         let rowNoises = [];
         let mic, fft;
 
+        let threshold = 200;
+        const offset = 1000;
+        let lastPeakTime = 0;
+
         function setup() {
             pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
@@ -29,10 +33,6 @@
             updateRowNoises();
         }
 
-        const threshold = 100;
-        const offset = 500;
-        let lastPeakTime = 0;
-
         function draw() {
             background(0);
 
@@ -43,26 +43,23 @@
 
             if (peak > threshold && millis() - lastPeakTime > offset) {
                 gridY = floor(random([2, 3, 4, 5, 10]));
-                gridX = floor(random([200, 300, 400, 500, 1000]));
+                gridX = floor(random([200, 300, 400, 500, 650, 700]));
                 updateSpeeds();
                 updateRowNoises();
                 lastPeakTime = millis();
             }
 
-            let dynamicRows = activity > 0.7 ? floor(map(activity, 0, 1, gridY, gridY + 6)) : gridY;
-
+            let dynamicRows = gridY;
             const tileWidth = width / gridX;
-            const tileHeight = height / dynamicRows;
+            const tileHeight = height / gridY;
 
             const time = millis() * 0.001;
 
             for (let y = 0; y < dynamicRows; y++) {
-
                 const velocity = speeds[y] * 0.05;
                 const stepNoise = rowNoises[y % rowNoises.length];
 
                 for (let x = 0; x < gridX; x++) {
-
                     const px = x * tileWidth;
                     const py = y * tileHeight;
 
@@ -91,14 +88,6 @@
             }
         }
 
-        function generateSeries(base, startPower, endPower) {
-            let series = [];
-            for (let i = startPower; i <= endPower; i++) {
-                series.push(Math.pow(base, i));
-            }
-            return series;
-        }
-
         function random2D(st) {
             return fract(sin(st.x * 12.9898 + st.y * 78.233) * 43758.5453123);
         }
@@ -108,20 +97,25 @@
             const vel = createVector(-time * max(gridX, gridY) * velocity, 0);
             const offset = createVector(0.5, 0);
 
-
             const gridPos = createVector(floor(st.x + vel.x), floor(st.y + vel.y));
             return step(stepNoise, random2D(gridPos));
         }
-
 
         function step(edge, value) {
             return value < edge ? 0.0 : 1.0;
         }
 
-
         function windowResized() {
             resizeCanvas(windowWidth, windowHeight);
         }
+
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("threshold-slider").addEventListener("input", (event) => {
+                threshold = parseInt(event.target.value, 10);
+                document.getElementById("threshold-value").textContent = threshold;
+            });
+        });
     </script>
 </head>
 
@@ -130,7 +124,12 @@
     <a href="thresh.html">Threshold</a>
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
- <a href="network.html">Network</a>
+    <a href="network.html">Network</a>
+    <span id="controls">
+        |
+        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">200</span></label>
+        <input type="range" id="threshold-slider" min="10" max="800" step="1" value="200" />
+    </span>
 </header>
 
 <body></body>
