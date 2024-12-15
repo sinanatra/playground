@@ -45,7 +45,7 @@
 
             let peak = Math.max(...spectrum);
 
-            if (frameCount % 10 === 0) {
+            if (frameCount % 50 === 0) {
                 asciiGradient = random([
                     "   ▍▎▏▚▀▓▉▊▋▌▍▎▏■□▪▫/*+=-:·▉▊▋▌▍▎▏|+=-:·",
                     "   █▓▒░░▒▓█▉▊▋▌▍▎▏■□▪░▒▓.:-=+*#@",
@@ -59,9 +59,10 @@
                     "   ⇧⇩⇨⇦↻↺↹➤➔➙➫▲▼◀▶⠁⠂⠄⠇⠈⠐⠠"
                 ]);
 
-
+            }
+            if (frameCount % 200 === 0) {
+            
                 speed = map(peak, 0, 255, 0.01, 0.5);
-
                 wave = random([
                     0.1, 100, 200, 300, 400, 500, 900,
                 ]);
@@ -130,7 +131,7 @@
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
-    <a href="sat.html">Satellite</a>    <a href="network.html">Network</a>
+    <a href="sat.html">Satellite</a> <a href="network.html">Network</a>
 </header>
 
 <body></body>
