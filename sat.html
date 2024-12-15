@@ -50,7 +50,7 @@
             let spectrum = fft.analyze();
             let bassEnergy = fft.getEnergy("bass");
 
-            if (frameCount % 30 === 0) {
+            if (frameCount % 10 === 0) {
                 updateZoomFactors(bassEnergy);
             }
 
@@ -63,7 +63,6 @@
                     let py = y * rowHeight + rowHeight / 2;
 
                     let zoomFactor = zoomFactors[x % zoomFactors.length];
-
 
                     let videoX = video.width / 2 - (video.width / zoomFactor) / 2;
                     let videoY = video.height / 2 - (video.height / zoomFactor) / 2;
@@ -85,7 +84,7 @@
 
         function updateZoomFactors(bassEnergy = 0) {
             zoomFactors = [];
-            const activity = map(bassEnergy, 0, 255, 0.1, 5);
+            const activity = map(bassEnergy, 0, 255, 0.01, 3);
             for (let i = 0; i < columnCount; i++) {
                 let randomZoom = random(1, activity);
                 zoomFactors.push(randomZoom);
