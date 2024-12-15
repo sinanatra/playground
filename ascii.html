@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+        let mic, fft;
+        let gridCols, gridRows;
+
+        let asciiGradient = "█▍▎▏▚▀▓▉▊▋▌▍▎▏■□▪▫#@&%$O0o+=~-^:,._`'·";
+
+        let scale = 0.1
+        let t = 0;
+        let speed = 0.01
+        let wave = 0.1
+        let baseHue = 0;
+
+        function setup() {
+            colorMode(HSB, 255);
+
+            createCanvas(windowWidth, windowHeight);
+            userStartAudio();
+
+            mic = new p5.AudioIn();
+            mic.start();
+
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+            textFont("Courier");
+            textAlign(CENTER, CENTER);
+            noStroke();
+        }
+
+        function draw() {
+            background(0);
+
+            const spectrum = fft.analyze();
+            const bassEnergy = fft.getEnergy("bass");
+            const activity = map(bassEnergy, 0, 255, 0, 1);
+
+            let peak = Math.max(...spectrum);
+
+            if (frameCount % 100 === 0) {
+                asciiGradient = random([
+                    "   ▍▎▏▚▀▓▉▊▋▌▍▎▏■□▪▫/*+=-:·▉▊▋▌▍▎▏|+=-:·",
+                    "   █▓▒░░▒▓█▉▊▋▌▍▎▏■□▪░▒▓.:-=+*#@",
+                    "   ▚▀▓▒░#@■□▪▫/*+=-~^:,._▚▀▓▒░#@■□▪▫:·",
+                    "   ▪▫@&%$O0o+=~-^:,._`'·▉▊▋▌▍▎▏░▒▓.:-+",
+                    "   ▉▊▋▌▍▎▚▀▓▒▉▊▋▌▍▎■□▪░▒▓█▍▎▏:·",
+                    "   ▒░▓█◆◇⬤◯○▋▍▎▏░▒▓▉▌░▒▓█",
+                    "   ✶✴❄✿❀☼♡♥♢♦☯☮▎▏▚▀▓▒▍▎▏@▪▫+=",
+                    "   ⍚⍀⎔⎕⎙⌇⌑⌖⊙⊚⊛⎈☰⟐▚▀▓▒░░▒▋▌▍▍▎▏",
+                    "   ☰☷☲☱☵☶⚘⚙⚗⚒◐◑◒◓⬤○∞⋆∘⊖§¶▍▎▏▚▀▒",
+                    "   ⇧⇩⇨⇦↻↺↹➤➔➙➫▲▼◀▶⠁⠂⠄⠇⠈⠐⠠"
+                ]);
+
+
+                speed = map(peak, 0, 255, 0.005, 1);
+
+                wave = random([
+                    0.1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 3000, 5000
+                ]);
+
+            }
+
+            t += activity * 0.01;
+            baseHue = (baseHue + 1) % 255;
+
+            renderASCII(t, activity, scale);
+        }
+
+        function renderASCII(time, energy, dynamicScale) {
+            gridCols = floor(width / 10);
+            gridRows = floor(height / 10);
+            const charSize = width / gridCols;
+
+            textSize(charSize);
+
+            const xOffset = time * 0.9;
+            const yOffset = time * 0.3;
+
+            for (let y = 0; y < gridRows; y++) {
+                for (let x = 0; x < gridCols; x++) {
+
+                    const noiseValue = noise(
+                        (x + xOffset) * dynamicScale,
+                        (y + yOffset) * dynamicScale,
+                        time
+                    );
+
+                    const jitterX = sin(time + y * 0.1) * wave;
+                    const jitterY = cos(time + x * 0.1) * wave;
+
+                    const charIndex = floor(map(noiseValue, 0, 1, 0, asciiGradient.length - 1));
+                    const asciiChar = asciiGradient[charIndex];
+
+                    const xPos = x * charSize + charSize / 2 + jitterX;
+                    const yPos = y * charSize + charSize / 2 + jitterY;
+
+                    const hue = (baseHue + map(noiseValue, 0, 1, 0, 100)) % 255;
+                    const saturation = 200 + map(energy, 0, 1, -50, 50);
+                    const brightness = map(noiseValue, 0, 1, 150, 255);
+
+                    fill(hue, saturation, brightness);
+
+
+                    push();
+                    translate(xPos, yPos);
+                    rotate(noiseValue * TWO_PI * 0.1);
+                    text(asciiChar, 0, 0);
+                    pop();
+                }
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</head>
+
+<header>
+    <a href="datamosh.html">Datamosh</a>
+    <a href="thresh.html">Threshold</a>
+    <a href="barcode.html">Barcode</a>
+    <a href="vol.html">Volume</a>
+    <a href="ascii.html">Ascii</a>
+    <a href="network.html">Network</a>
+</header>
+
+<body></body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+        position: absolute;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>
