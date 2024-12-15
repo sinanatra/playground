@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+        let mic, fft;
+        const rowCount = 20;
+        let columnCount = 20;
+        let zoomFactors = [];
+        let video;
+
+        async function loadVideo() {
+            if (video) video.remove();
+            video = createVideo('nasa.mp4');
+            video.size(windowWidth, windowHeight);
+            video.volume(0);
+            video.loop();
+            video.hide();
+        }
+
+        async function setup() {
+            pixelDensity(1);
+            createCanvas(windowWidth, windowHeight);
+            noStroke();
+            rectMode(CENTER);
+
+            userStartAudio();
+
+            mic = new p5.AudioIn();
+            await mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+            await loadVideo();
+            updateZoomFactors();
+        }
+
+        function draw() {
+            background(0);
+
+            if (!video || video.elt.paused) {
+                return;
+            }
+
+            let spectrum = fft.analyze();
+            let bassEnergy = fft.getEnergy("bass");
+
+            if (frameCount % 30 === 0) {
+                updateZoomFactors(bassEnergy);
+            }
+
+            let columnWidth = width / columnCount;
+            let rowHeight = height / rowCount;
+
+            for (let x = 0; x < columnCount; x++) {
+                for (let y = 0; y < rowCount; y++) {
+                    let px = x * columnWidth + columnWidth / 2;
+                    let py = y * rowHeight + rowHeight / 2;
+
+                    let zoomFactor = zoomFactors[x % zoomFactors.length];
+
+
+                    let videoX = video.width / 2 - (video.width / zoomFactor) / 2;
+                    let videoY = video.height / 2 - (video.height / zoomFactor) / 2;
+                    let videoWidth = video.width / zoomFactor;
+                    let videoHeight = video.height / zoomFactor;
+
+
+                    drawingContext.save();
+                    drawingContext.translate(px, py);
+                    drawingContext.beginPath();
+                    drawingContext.rect(-columnWidth / 2, -rowHeight / 2, columnWidth, rowHeight);
+                    drawingContext.clip();
+
+                    drawingContext.drawImage(video.elt, videoX, videoY, videoWidth, videoHeight, -columnWidth / 2, -rowHeight / 2, columnWidth, rowHeight);
+                    drawingContext.restore();
+                }
+            }
+        }
+
+        function updateZoomFactors(bassEnergy = 0) {
+            zoomFactors = [];
+            const activity = map(bassEnergy, 0, 255, 0.1, 5);
+            for (let i = 0; i < columnCount; i++) {
+                let randomZoom = random(1, activity);
+                zoomFactors.push(randomZoom);
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</head>
+
+<header>
+    <a href="datamosh.html">Datamosh</a>
+    <a href="thresh.html">Threshold</a>
+    <a href="barcode.html">Barcode</a>
+    <a href="vol.html">Volume</a>
+    <a href="ascii.html">Ascii</a>
+    <a href="sat.html">Satellite</a> 
+    <a href="network.html">Network</a>
+</header>
+
+<body></body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+        position: absolute;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>
