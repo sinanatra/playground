@@ -16,7 +16,7 @@
         let scale = 0.1
         let t = 0;
         let speed = 0.01
-        let wave = 0.1
+        let wave = 100
         let baseHue = 0;
 
         function setup() {
@@ -63,7 +63,7 @@
                 speed = map(peak, 0, 255, 0.005, 1);
 
                 wave = random([
-                    0.1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 3000, 5000
+                    0.1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
                 ]);
 
             }
