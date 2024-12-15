@@ -45,7 +45,7 @@
 
             let peak = Math.max(...spectrum);
 
-            if (frameCount % 20 === 0) {
+            if (frameCount % 10 === 0) {
                 asciiGradient = random([
                     "   ▍▎▏▚▀▓▉▊▋▌▍▎▏■□▪▫/*+=-:·▉▊▋▌▍▎▏|+=-:·",
                     "   █▓▒░░▒▓█▉▊▋▌▍▎▏■□▪░▒▓.:-=+*#@",
@@ -60,10 +60,10 @@
                 ]);
 
 
-                speed = map(peak, 0, 255, 0.005, 1);
+                speed = map(peak, 0, 255, 0.01, 0.5);
 
                 wave = random([
-                    0.1, 100, 200, 300, 400, 500,
+                    0.1, 100, 200, 300, 400, 500, 900,
                 ]);
 
             }
@@ -75,14 +75,14 @@
         }
 
         function renderASCII(time, energy, dynamicScale) {
-            gridCols = floor(width / 10);
-            gridRows = floor(height / 10);
+            gridCols = floor(width / 13);
+            gridRows = floor(height / 13);
             const charSize = width / gridCols;
 
             textSize(charSize);
 
             const xOffset = time * 0.9;
-            const yOffset = time * 0.3;
+            const yOffset = time * 0.9;
 
             for (let y = 0; y < gridRows; y++) {
                 for (let x = 0; x < gridCols; x++) {
