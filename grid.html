@@ -9,14 +9,14 @@
     <script src="p5.sound.min.js"></script>
     <script>
         let mic, fft;
-        const rowCount = 10;
-        let columnCount = 10;
+        let rowCount = 4;
+        let columnCount = 4;
         let zoomFactors = [];
         let video;
 
         async function loadVideo() {
             if (video) video.remove();
-            video = createVideo('nasa.mp4');
+            video = createVideo('nasa2.mp4');
             video.size(windowWidth, windowHeight);
             video.volume(0);
             video.loop();
@@ -42,6 +42,8 @@
 
         function draw() {
             background(0);
+            background("hsl(251, 96%, 36%)");
+
 
             if (!video || video.elt.paused) {
                 return;
@@ -54,6 +56,11 @@
                 updateZoomFactors(bassEnergy);
             }
 
+            if (frameCount % 60 === 0) {
+                columnCount = random([2, 3, 4]);
+                rowCount = random([2, 3, 4]);
+            }
+
             let columnWidth = width / columnCount;
             let rowHeight = height / rowCount;
 
@@ -64,11 +71,21 @@
 
                     let zoomFactor = zoomFactors[x % zoomFactors.length];
 
-                    let videoX = video.width / 2 - (video.width / zoomFactor) / 2;
-                    let videoY = video.height / 2 - (video.height / zoomFactor) / 2;
-                    let videoWidth = video.width / zoomFactor;
-                    let videoHeight = video.height / zoomFactor;
+                    let videoAspectRatio = video.width / video.height;
+                    let cellAspectRatio = columnWidth / rowHeight;
 
+                    let videoDrawWidth, videoDrawHeight;
+
+                    if (videoAspectRatio > cellAspectRatio) {
+                        videoDrawHeight = rowHeight * zoomFactor;
+                        videoDrawWidth = videoDrawHeight * videoAspectRatio;
+                    } else {
+                        videoDrawWidth = columnWidth * zoomFactor;
+                        videoDrawHeight = videoDrawWidth / videoAspectRatio;
+                    }
+
+                    let offsetX = -(videoDrawWidth - columnWidth) / 2;
+                    let offsetY = -(videoDrawHeight - rowHeight) / 2;
 
                     drawingContext.save();
                     drawingContext.translate(px, py);
@@ -76,18 +93,30 @@
                     drawingContext.rect(-columnWidth / 2, -rowHeight / 2, columnWidth, rowHeight);
                     drawingContext.clip();
 
-                    drawingContext.drawImage(video.elt, videoX, videoY, videoWidth, videoHeight, -columnWidth / 2, -rowHeight / 2, columnWidth, rowHeight);
+                    drawingContext.drawImage(
+                        video.elt,
+                        0, 0,
+                        video.width, video.height,
+                        offsetX - columnWidth / 2,
+                        offsetY - rowHeight / 2,
+                        videoDrawWidth,
+                        videoDrawHeight
+                    );
+
                     drawingContext.restore();
+
+                    stroke("black");
+                    noFill();
+                    rect(px, py, columnWidth, rowHeight);
                 }
             }
         }
 
         function updateZoomFactors(bassEnergy = 0) {
             zoomFactors = [];
-            const activity = map(bassEnergy, 0, 255, 0.01, 3);
+            const activity = map(bassEnergy, 0, 255, 0.001, 1)
             for (let i = 0; i < columnCount; i++) {
-                let randomZoom = random(1, activity);
-                zoomFactors.push(randomZoom);
+                zoomFactors.push(activity);
             }
         }
 
@@ -103,7 +132,7 @@
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
-    <a href="sat.html">Satellite</a> 
+    <a href="grid.html">Video Grid</a>
     <a href="network.html">Network</a>
 </header>
 

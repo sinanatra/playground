@@ -41,7 +41,7 @@
             const cellHeight = height / (gridRows - 1);
 
             if (frameCount % 120 === 0) {
-                gridCols = floor(map(activity, 0, 1, 2, 30));
+                gridCols = floor(map(activity, 0, 1, 2, 20));
                 gridRows = floor(map(activity, 0, 1, 2, 10));
 
                 initializeGrid();
@@ -65,11 +65,11 @@
                     const posYB = pointB.y;
 
 
-                    const noiseValue = noise(pointB.x * 0.01, pointB.y * 0.01, frameCount * 0.01);
+                    const noiseValue = noise(pointB.x * 0.001, pointB.y * 0.01, frameCount * 0.01);
                     const hue = (baseHue + map(noiseValue, 0, 1, 0, 100)) % 255;
                     const brightness = map(noiseValue, 0, 1, 100, 255);
 
-                    strokeWeight(0.5);
+                    strokeWeight(1.5);
                     stroke(hue, 200, brightness);
                     line(posXA, posYA, posXB, posYB);
                 }
@@ -113,7 +113,7 @@
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
-    <a href="sat.html">Satellite</a> <a href="network.html">Network</a>
+    <a href="grid.html">Video Grid</a> <a href="network.html">Network</a>
 </header>
 
 <body></body>

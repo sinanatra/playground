@@ -45,7 +45,7 @@
 
             let peak = Math.max(...spectrum);
 
-            if (frameCount % 50 === 0) {
+            if (frameCount % 100 === 0) {
                 asciiGradient = random([
                     "   ▍▎▏▚▀▓▉▊▋▌▍▎▏■□▪▫/*+=-:·▉▊▋▌▍▎▏|+=-:·",
                     "   █▓▒░░▒▓█▉▊▋▌▍▎▏■□▪░▒▓.:-=+*#@",
@@ -61,23 +61,22 @@
 
             }
             if (frameCount % 200 === 0) {
-            
-                speed = map(peak, 0, 255, 0.01, 0.5);
                 wave = random([
                     0.1, 100, 200, 300, 400, 500, 900,
                 ]);
-
             }
 
-            t += activity * 0.01;
+            speed = map(peak, 0, 255, 0.001, 0.02);
+
+            t += activity * speed;
             baseHue = (baseHue + 1) % 255;
 
             renderASCII(t, activity, scale);
         }
 
         function renderASCII(time, energy, dynamicScale) {
-            gridCols = floor(width / 13);
-            gridRows = floor(height / 13);
+            gridCols = floor(width / 20);
+            gridRows = floor(height / 20);
             const charSize = width / gridCols;
 
             textSize(charSize);
@@ -131,7 +130,7 @@
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
-    <a href="sat.html">Satellite</a> <a href="network.html">Network</a>
+    <a href="grid.html">Video Grid</a> <a href="network.html">Network</a>
 </header>
 
 <body></body>

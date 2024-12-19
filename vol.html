@@ -17,6 +17,7 @@
 
         function setup() {
             colorMode(HSB, 255);
+            frameRate(30)
 
             pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
@@ -71,8 +72,8 @@
 
 
                     const brightness = map(randVal, 0, 1, 0, 255);
-                    const hue = (baseHue + map(randVal, 0, 1, 0, 255)) % 255;
-                    const saturation = 100 + map(bassEnergy, 0, 1, -50, 50);
+                    // const hue = (baseHue + map(randVal, 0, 1, 0, 255)) % 255;
+                    // const saturation = map(bassEnergy, 0, 1, -50, 50);
 
                     stroke(50)
                     noFill()
@@ -81,7 +82,8 @@
                     noStroke()
 
                     if (toggleRectWidth) {
-                        fill(hue, saturation, brightness);
+                        // fill(hue, saturation, brightness);
+                        fill(brightness);
                     }
                     else {
                         fill(brightness);
@@ -118,7 +120,7 @@
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
-    <a href="sat.html">Satellite</a>
+    <a href="grid.html">Video Grid</a>
     <a href="network.html">Network</a>
 </header>
 
