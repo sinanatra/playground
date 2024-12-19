@@ -117,7 +117,7 @@
 
             let bassEnergy = fft.getEnergy("bass");
             let bpm = map(bassEnergy, 0, 255, 60, 180);
-            let speed = map(bpm, 60, 180, 0.5, 2);
+            let speed = map(bpm, 60, 180, 0.1, 5);
             let offset = 2000;
 
             vid.speed(speed);
@@ -140,7 +140,7 @@
                 } else {
                     datamoshRepeats = 2;
                 }
-                vid.time(vid.time() + direction);
+                // vid.time(vid.time() + direction);
                 lastPeakTime = millis();
             }
 
