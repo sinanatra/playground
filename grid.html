@@ -16,7 +16,7 @@
 
         async function loadVideo() {
             if (video) video.remove();
-            video = createVideo('nasa2.mp4');
+            video = createVideo('video2.mp4');
             video.size(windowWidth, windowHeight);
             video.volume(0);
             video.loop();
@@ -57,8 +57,14 @@
             }
 
             if (frameCount % 60 === 0) {
-                columnCount = random([2, 3, 4]);
-                rowCount = random([2, 3, 4]);
+                columnCount = random([1, 2, 4]);
+
+                if (columnCount <= 3) {
+                    rowCount = random([2, 3]);
+                }
+                else {
+                    rowCount = random([2, 3, 4, 5, 10]);
+                }
             }
 
             let columnWidth = width / columnCount;
@@ -128,12 +134,11 @@
 
 <header>
     <a href="datamosh.html">Datamosh</a>
-    <a href="thresh.html">Threshold</a>
     <a href="barcode.html">Barcode</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
     <a href="grid.html">Video Grid</a>
-    <a href="network.html">Network</a>
+    
 </header>
 
 <body></body>
