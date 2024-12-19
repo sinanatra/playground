@@ -51,20 +51,19 @@
 
             let spectrum = fft.analyze();
             let bassEnergy = fft.getEnergy("bass");
+            let bpm = map(bassEnergy, 0, 255, 60, 180);
+            let speed = map(bpm, 60, 180, 0, 2);
+            let offset = 2000;
+
+            video.speed(speed);
 
             if (frameCount % 10 === 0) {
                 updateZoomFactors(bassEnergy);
             }
 
             if (frameCount % 60 === 0) {
-                columnCount = random([1, 2, 4]);
-
-                if (columnCount <= 3) {
-                    rowCount = random([2, 3]);
-                }
-                else {
-                    rowCount = random([2, 3, 4, 5, 10]);
-                }
+                columnCount = random([2, 4, 6, 8]);
+                rowCount = columnCount / 2
             }
 
             let columnWidth = width / columnCount;
@@ -138,7 +137,7 @@
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
     <a href="grid.html">Video Grid</a>
-    
+
 </header>
 
 <body></body>
