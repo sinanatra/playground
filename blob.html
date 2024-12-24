@@ -17,6 +17,9 @@
         const offset = 500;
         let displayMode = 0;
         let isGray = false;
+        let videoUrls = ['video_1.mp4', 'video_2.mp4'];
+        let currentVideoIndex = 0
+
         async function setup() {
             pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
@@ -29,9 +32,8 @@
             fft = new p5.FFT(0.6, 256);
             fft.setInput(mic);
 
-
+            currentVideoIndex = floor(random(0, videoUrls.length));
             await loadVideo();
-
 
             myVida = new Vida(this);
             myVida.progressiveBackgroundFlag = true;
@@ -48,7 +50,7 @@
 
         async function loadVideo() {
             if (vid) vid.remove();
-            vid = createVideo(['video_2.mp4']);
+            vid = createVideo(videoUrls[currentVideoIndex]);
             vid.size(320, 240);
             vid.volume(0);
             vid.loop();
@@ -66,7 +68,7 @@
 
             let bassEnergy = fft.getEnergy("bass");
             let bpm = map(bassEnergy, 0, 255, 60, 180);
-            let speed = map(bpm, 60, 180, 0.1, 3);
+            let speed = map(bpm, 60, 180, 0.5, 3);
 
             vid.speed(speed);
 
@@ -159,8 +161,8 @@
             }
 
             if (displayMode === 2) {
-                stroke("yellow");
-                strokeWeight(0.5)
+                stroke(255, 255, 0, 60);
+                strokeWeight(1)
                 for (let i = 0; i < points.length; i++) {
                     for (let j = i + 1; j < points.length; j++) {
                         line(points[i].x, points[i].y, points[j].x, points[j].y);
@@ -173,7 +175,13 @@
             resizeCanvas(windowWidth, windowHeight);
         }
 
+        function switchVideo() {
+            currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
+            loadVideo();
+        }
+
         function mousePressed() {
+            switchVideo();
             if (vid) {
                 vid.play();
             }
@@ -198,7 +206,7 @@
     <span id="controls">
         |
         <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">100</span></label>
-        <input type="range" id="threshold-slider" min="10" max="800" step="1" value="100" />
+        <input type="range" id="threshold-slider" min="10" max="2000" step="1" value="100" />
     </span>
 </header>
 
