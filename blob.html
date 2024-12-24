@@ -21,7 +21,7 @@
         let videoUrls = ['video_1.mp4', 'video_2.mp4', 'video_3.mp4', 'video_4.mp4'];
         let currentVideoIndex = 0;
 
-        let color = [255, 255, 0];
+        let color = [255, 255, 255];
 
         async function setup() {
             pixelDensity(1);
@@ -96,6 +96,7 @@
                 if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
                     displayMode = (displayMode + 1) % 5;
                     lastPeakTime = millis();
+                    color = random([[255, 255, 0], [255, 255, 255]]);
                 }
 
                 drawBlobs();
