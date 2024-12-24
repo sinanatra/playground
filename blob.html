@@ -17,7 +17,6 @@
         const offset = 500;
         let displayMode = 0;
         let isGray = false;
-
         async function setup() {
             pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
@@ -78,15 +77,17 @@
                 myVida.update(vid);
                 image(vid, 0, 0, width, height);
 
-                if (isGray) {
-                    filter(GRAY);
+                if (frameCount % 240 === 0) {
+                    isGray = !isGray
+                    if (isGray) {
+                        filter(GRAY);
+                    }
                 }
 
                 if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
                     displayMode = (displayMode + 1) % 4;
                     lastPeakTime = millis();
                     let bool = random()
-                    isGray = bool > 0.8 ? false : true
                 }
 
                 drawBlobs();
