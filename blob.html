@@ -14,17 +14,19 @@
         let mic, fft;
         let kickThreshold = 10;
         let lastPeakTime = 0;
-        const offset = 500;
+        const offset = 1000;
         let displayMode = 0;
         let isGray = false;
-        let videoUrls = ['video_1.mp4', 'video_2.mp4'];
-        let currentVideoIndex = 0
+        let videoChangeInterval = 50000;
+        let videoUrls = ['video_1.mp4', 'video_2.mp4', 'video_3.mp4', 'video_4.mp4'];
+        let currentVideoIndex = 0;
+
+        let color = [255, 255, 0];
 
         async function setup() {
             pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
             textAlign(CENTER, CENTER);
-
 
             userStartAudio();
             mic = new p5.AudioIn();
@@ -46,6 +48,10 @@
 
             frameRate(30);
             background(0);
+
+            setInterval(() => {
+                switchVideo();
+            }, videoChangeInterval);
         }
 
         async function loadVideo() {
@@ -59,7 +65,7 @@
             vid.elt.onloadedmetadata = () => {
                 let randomStartTime = random(0, vid.duration());
                 vid.time(randomStartTime);
-                console.log(`Video loaded starting at ${randomStartTime} seconds`);
+                console.log(`Video loaded: ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`);
             };
         }
 
@@ -68,8 +74,7 @@
 
             let bassEnergy = fft.getEnergy("bass");
             let bpm = map(bassEnergy, 0, 255, 60, 180);
-            let speed = map(bpm, 60, 180, 0.5, 3);
-
+            let speed = map(bpm, 60, 180, 0.1, 2);
             vid.speed(speed);
 
             let spectrum = fft.analyze();
@@ -79,22 +84,12 @@
                 myVida.update(vid);
                 image(vid, 0, 0, width, height);
 
-                if (frameCount % 140 === 0) {
-                    isGray = !isGray
-                }
-
-                if (isGray) {
-                    filter(GRAY);
-                }
-
                 if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
                     displayMode = (displayMode + 1) % 4;
                     lastPeakTime = millis();
-                    let bool = random()
                 }
 
                 drawBlobs();
-
             }
         }
 
@@ -104,7 +99,6 @@
 
             for (let i = 0; i < blobs.length; i++) {
                 let b = blobs[i];
-
 
                 let rectX = b.normRectX * width;
                 let rectY = b.normRectY * height;
@@ -116,59 +110,48 @@
 
                 points.push({ x: massX, y: massY });
 
+
                 switch (displayMode) {
                     case 0:
                         noFill();
-                        stroke("yellow");
+                        stroke(...color);
                         rect(rectX, rectY, rectW, rectH);
-                        noStroke()
-                        fill("yellow");
+                        noStroke();
+                        fill(...color);
                         textSize(8);
-                        text(
-                            `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
-                            rectX - 20,
-                            rectY - 10,
-                            50
-                        );
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX - 20, rectY - 10, 50);
                         break;
                     case 1:
                         noStroke();
-                        fill("yellow");
+                        fill(...color);
                         textSize(6);
-                        text(
-                            `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
-                            rectX,
-                            rectY - 5
-                        );
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
                         break;
                     case 2:
-                        noStroke()
-                        fill("yellow");
+                        noStroke();
+                        fill(...color);
                         ellipse(massX, massY, 5, 5);
                         break;
                     case 3:
-                        noStroke()
-                        fill("yellow");
+                        noStroke();
+                        fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(
-                            `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
-                            rectX,
-                            rectY - 5
-                        );
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
                         break;
                 }
             }
 
             if (displayMode === 2) {
-                stroke(255, 255, 0, 30);
-                // strokeWeight(1)
-                for (let i = 0; i < points.length; i++) {
+                stroke(...color);
+                for (let i = 0; i < points.length / 4; i++) {
                     for (let j = i + 1; j < points.length; j++) {
                         line(points[i].x, points[i].y, points[j].x, points[j].y);
                     }
                 }
             }
+
+
         }
 
         function windowResized() {
