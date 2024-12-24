@@ -85,7 +85,7 @@
                 image(vid, 0, 0, width, height);
 
                 if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
-                    displayMode = (displayMode + 1) % 4;
+                    displayMode = (displayMode + 1) % 5;
                     lastPeakTime = millis();
                 }
 
@@ -131,6 +131,8 @@
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
+                        textSize(6);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
                         break;
                     case 3:
                         noStroke();
@@ -139,19 +141,50 @@
                         textSize(6);
                         text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
                         break;
+                    case 4:
+                        noFill();
+                        stroke(...color);
+                        rect(rectX, rectY, rectW, rectH);
+
+                        line(rectX, rectY, rectX + rectW, rectY + rectH);
+                        line(rectX + rectW, rectY, rectX, rectY + rectH);
+
+                        noStroke();
+                        fill(...color);
+                        textSize(8);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX - 20, rectY - 10, 50);
+
                 }
             }
 
-            if (displayMode === 2) {
+            // if (displayMode === 2) {
+            //     stroke(...color);
+            //     for (let i = 0; i < points.length / 4; i++) {
+            //         for (let j = i + 1; j < points.length; j++) {
+            //             line(points[i].x, points[i].y, points[j].x, points[j].y);
+            //         }
+            //     }
+            // }
+            // console.log(points.length)
+            if (displayMode === 2 && points.length <= 30) {
                 stroke(...color);
-                for (let i = 0; i < points.length / 4; i++) {
+                // strokeWeight(.5)
+                noFill();
+
+                for (let i = 0; i < points.length / 3; i++) {
                     for (let j = i + 1; j < points.length; j++) {
-                        line(points[i].x, points[i].y, points[j].x, points[j].y);
+                        let p1 = points[i];
+                        let p2 = points[j];
+                        let controlX1 = (p1.x + p2.x) / 2 + random(-250, 250);
+                        let controlY1 = (p1.y + p2.y) / 2 + random(-250, 250);
+
+                        let controlX2 = (p1.x + p2.x) / 2 + random(-250, 250);
+                        let controlY2 = (p1.y + p2.y) / 2 + random(-250, 250);
+
+                        bezier(p1.x, p1.y, controlX1, controlY1, controlX2, controlY2, p2.x, p2.y);
                     }
                 }
             }
-
-
         }
 
         function windowResized() {
