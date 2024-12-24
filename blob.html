@@ -74,7 +74,7 @@
 
             let bassEnergy = fft.getEnergy("bass");
             let bpm = map(bassEnergy, 0, 255, 60, 180);
-            let speed = map(bpm, 60, 180, 0.1, 2);
+            let speed = map(bpm, 60, 180, 0.1, 1.75);
             vid.speed(speed);
 
             let spectrum = fft.analyze();
