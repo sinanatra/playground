@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script src="p5.vida.min.js"></script>
+    <script>
+        let vid;
+        let myVida;
+        let mic, fft;
+        let kickThreshold = 10;
+        let lastPeakTime = 0;
+        const offset = 500;
+        let displayMode = 0;
+
+        async function setup() {
+            pixelDensity(1);
+            createCanvas(windowWidth, windowHeight);
+            textAlign(CENTER, CENTER);
+
+
+            userStartAudio();
+            mic = new p5.AudioIn();
+            mic.start();
+            fft = new p5.FFT(0.6, 256);
+            fft.setInput(mic);
+
+
+            await loadVideo();
+
+
+            myVida = new Vida(this);
+            myVida.progressiveBackgroundFlag = true;
+            myVida.imageFilterFeedback = 0.85;
+            myVida.imageFilterThreshold = 0.1;
+            myVida.handleBlobsFlag = true;
+            myVida.trackBlobsFlag = true;
+            myVida.approximateBlobPolygonsFlag = false;
+            myVida.normMinBlobMass = 0.0001;
+
+            frameRate(30);
+            background(0);
+        }
+
+        async function loadVideo() {
+            if (vid) vid.remove();
+            vid = createVideo(['video_1.mp4']);
+            vid.size(320, 240);
+            vid.volume(0);
+            vid.loop();
+            vid.hide();
+
+            vid.elt.onloadedmetadata = () => {
+                let randomStartTime = random(0, vid.duration());
+                vid.time(randomStartTime);
+                console.log(`Video loaded starting at ${randomStartTime} seconds`);
+            };
+        }
+
+        function draw() {
+            background(0);
+
+            if (vid && vid.elt.readyState >= 2) {
+                myVida.update(vid);
+
+                image(vid, 0, 0, width, height);
+                drawBlobs();
+            }
+            let bassEnergy = fft.getEnergy("bass");
+            let bpm = map(bassEnergy, 0, 255, 60, 180);
+            let speed = map(bpm, 60, 180, 0.1, 5);
+            vid.speed(speed);
+
+
+            let spectrum = fft.analyze();
+            let kickEnergy = fft.getEnergy(20, 100);
+
+
+            if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
+                displayMode = (displayMode + 1) % 4;
+                lastPeakTime = millis();
+            }
+        }
+
+        function drawBlobs() {
+            let blobs = myVida.getBlobs();
+            let points = [];
+
+            for (let i = 0; i < blobs.length; i++) {
+                let b = blobs[i];
+
+
+                let rectX = b.normRectX * width;
+                let rectY = b.normRectY * height;
+                let rectW = b.normRectW * width;
+                let rectH = b.normRectH * height;
+
+                let massX = b.normMassCenterX * width;
+                let massY = b.normMassCenterY * height;
+
+                points.push({ x: massX, y: massY });
+
+                switch (displayMode) {
+                    case 0:
+                        noFill();
+                        stroke("yellow");
+                        rect(rectX, rectY, rectW, rectH);
+                        noStroke()
+                        fill("yellow");
+                        textSize(8);
+                        text(
+                            `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
+                            rectX - 20,
+                            rectY - 10,
+                            50
+                        );
+                        break;
+                    case 1:
+                        noStroke();
+                        fill("yellow");
+                        textSize(6);
+                        text(
+                            `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
+                            rectX,
+                            rectY - 5
+                        );
+                        break;
+                    case 2:
+                        noStroke()
+                        fill("yellow");
+                        ellipse(massX, massY, 5, 5);
+                        break;
+                    case 3:
+                        noStroke()
+                        fill("yellow");
+                        ellipse(massX, massY, 5, 5);
+                        textSize(6);
+                        text(
+                            `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
+                            rectX,
+                            rectY - 5
+                        );
+                        break;
+                }
+            }
+
+            if (displayMode === 2) {
+                stroke("yellow");
+                strokeWeight(0.5)
+                for (let i = 0; i < points.length; i++) {
+                    for (let j = i + 1; j < points.length; j++) {
+                        line(points[i].x, points[i].y, points[j].x, points[j].y);
+                    }
+                }
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+
+        function mousePressed() {
+            if (vid) {
+                vid.play();
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("threshold-slider").addEventListener("input", (event) => {
+                kickThreshold = parseInt(event.target.value, 10);
+                document.getElementById("threshold-value").textContent = kickThreshold;
+            });
+        });
+    </script>
+</head>
+
+<header>
+    <a href="datamosh.html">Datamosh</a>
+    <a href="barcode.html">Barcode</a>
+    <a href="blob.html">Detection</a>
+    <a href="vol.html">Volume</a>
+    <a href="ascii.html">Ascii</a>
+    <a href="grid.html">Video Grid</a>
+    <span id="controls">
+        |
+        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">10</span></label>
+        <input type="range" id="threshold-slider" min="10" max="800" step="1" value="10" />
+    </span>
+</header>
+
+<body></body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+        position: absolute;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>

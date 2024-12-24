@@ -14,8 +14,9 @@
         let rowNoises = [];
         let mic, fft;
 
-        let threshold = 200;
-        const offset = 1000;
+        let kickThreshold = 150;
+        let snareThreshold = 120;
+        const offset = 500;
         let lastPeakTime = 0;
 
         function setup() {
@@ -23,7 +24,7 @@
             createCanvas(windowWidth, windowHeight);
             noStroke();
             rectMode(CORNER);
-            frameRate(20)
+            frameRate(20);
 
             userStartAudio();
             mic = new p5.AudioIn();
@@ -38,17 +39,18 @@
             background(0);
 
             let spectrum = fft.analyze();
-            let bassEnergy = fft.getEnergy("bass");
-            const activity = map(bassEnergy, 0, 255, 0, 1);
-            let peak = Math.max(...spectrum);
+            let kickEnergy = fft.getEnergy(20, 100); // Low frequencies for kicks
+            let snareEnergy = fft.getEnergy(250, 2000); // Mid frequencies for snares
 
-            if (peak > threshold && millis() - lastPeakTime > offset) {
+            // Kick Detection
+            if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset || snareEnergy > snareThreshold && millis() - lastPeakTime > offset) {
                 gridY = floor(random([2, 3, 4, 5, 10]));
                 gridX = floor(random([200, 300, 400, 500, 650, 700]));
                 updateSpeeds();
                 updateRowNoises();
                 lastPeakTime = millis();
             }
+
 
             let dynamicRows = gridY;
             const tileWidth = width / gridX;
@@ -110,22 +112,23 @@
             resizeCanvas(windowWidth, windowHeight);
         }
 
-
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("threshold-slider").addEventListener("input", (event) => {
-                threshold = parseInt(event.target.value, 10);
-                document.getElementById("threshold-value").textContent = threshold;
+                kickThreshold = parseInt(event.target.value, 10);
+                document.getElementById("threshold-value").textContent = kickThreshold;
             });
         });
+
     </script>
 </head>
 
 <header>
     <a href="datamosh.html">Datamosh</a>
     <a href="barcode.html">Barcode</a>
+    <a href="blob.html">Detection</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
-    <a href="grid.html">Video Grid</a>    
+    <a href="grid.html">Video Grid</a>
     <span id="controls">
         |
         <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">200</span></label>
