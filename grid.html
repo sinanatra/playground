@@ -51,7 +51,7 @@
 
             let spectrum = fft.analyze();
             let bassEnergy = fft.getEnergy("bass");
-            let bpm = map(bassEnergy, 0, 255, 60, 180);
+            let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 0, 180);
             let speed = map(bpm, 60, 180, 0, 2);
             let offset = 2000;
 

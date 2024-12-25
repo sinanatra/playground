@@ -17,6 +17,7 @@
         const offset = 1000;
         let displayMode = 0;
         let isGray = 0;
+        let bg = 0;
         let videoChangeInterval = 50000;
         let videoUrls = ['video_1.mp4', 'video_2.mp4', 'video_3.mp4', 'video_4.mp4'];
         let currentVideoIndex = 0;
@@ -24,7 +25,7 @@
         let color = [255, 255, 255];
 
         async function setup() {
-            pixelDensity(1);
+            // pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
             textAlign(CENTER, CENTER);
 
@@ -73,16 +74,23 @@
             background(0);
 
             let bassEnergy = fft.getEnergy("bass");
-            let bpm = map(bassEnergy, 0, 255, 60, 180);
+            let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
+
             let speed = map(bpm, 60, 180, 0.1, 1.75);
             vid.speed(speed);
 
             let spectrum = fft.analyze();
-            let kickEnergy = fft.getEnergy(20, 100);
+
+            let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100);
 
             if (vid && vid.elt.readyState >= 2) {
                 myVida.update(vid);
                 image(vid, 0, 0, width, height);
+
+                blendMode(MULTIPLY);
+                fill(0, 90);
+                rect(0, 0, width, height);
+                blendMode(BLEND);
 
                 if (isGray > 0.5) {
                     filter(GRAY)
@@ -92,14 +100,39 @@
                     isGray = random()
                 }
 
+                // if (bg > 0.8) {
+                //     fill(0)
+                //     rect(0, 0, width, height);
+                // }
+                // if (frameCount % 120 === 0) {
+                //     bg = random()
+                // }
+
 
                 if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
-                    displayMode = (displayMode + 1) % 5;
+                    // displayMode = (displayMode + 1) % 5;
+                    displayMode = random([0, 1, 2, 3, 4])
                     lastPeakTime = millis();
-                    color = random([[255, 255, 0], [255, 255, 255]]);
+                    color = random([
+                        [255, 255, 0],   // Bright Yellow
+                        [255, 0, 0],     // Bright Red
+                        [0, 255, 0],     // Bright Green
+                        [0, 0, 255],     // Bright Blue
+                        [255, 255, 255], // Pure White
+                        [255, 128, 0],   // Bright Orange
+                        [0, 255, 255],   // Bright Cyan
+                        [255, 0, 255],   // Bright Magenta
+                        [128, 0, 255],   // Flashy Purple
+                        [255, 182, 193], // Light Pink
+                        [240, 230, 140], // Khaki Yellow 
+                    ]);
+
+
                 }
 
-                drawBlobs();
+                if (speed >= 0.5) {
+                    drawBlobs();
+                }
             }
         }
 
@@ -120,11 +153,11 @@
 
                 points.push({ x: massX, y: massY });
 
-
                 switch (displayMode) {
                     case 0:
                         noFill();
                         stroke(...color);
+                        fill(255, 255, 255, 30);
                         rect(rectX, rectY, rectW, rectH);
                         noStroke();
                         fill(...color);
@@ -135,14 +168,14 @@
                         noStroke();
                         fill(...color);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY);
                         break;
                     case 2:
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
-                        textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
+                        // textSize(6);
+                        // text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
                         break;
                     case 3:
                         noStroke();
@@ -154,8 +187,8 @@
                     case 4:
                         noFill();
                         stroke(...color);
+                        fill(255, 255, 255, 30);
                         rect(rectX, rectY, rectW, rectH);
-
                         line(rectX, rectY, rectX + rectW, rectY + rectH);
                         line(rectX + rectW, rectY, rectX, rectY + rectH);
 

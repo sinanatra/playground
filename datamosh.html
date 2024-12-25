@@ -116,8 +116,8 @@
             let peakIndex = spectrum.indexOf(peak);
 
             let bassEnergy = fft.getEnergy("bass");
-            let bpm = map(bassEnergy, 0, 255, 60, 180);
-            let speed = map(bpm, 60, 180, 0.1, 5);
+            let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
+            let speed = constrain(map(bpm, 60, 180, 0.1, 5), 0.1, 5);
             let offset = 2000;
 
             vid.speed(speed);
