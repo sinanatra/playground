@@ -12,9 +12,9 @@
         let vid;
         let myVida;
         let mic, fft;
-        let kickThreshold = 10;
+        let threshold = 10;
         let lastPeakTime = 0;
-        const offset = 1000;
+        const offset = 100;
         let displayMode = 0;
         let isGray = 0;
         let bg = 0;
@@ -71,17 +71,15 @@
         }
 
         function draw() {
-            background(0);
+            // background(0);
 
             let bassEnergy = fft.getEnergy("bass");
             let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
-
-            let speed = map(bpm, 60, 180, 0.1, 1.75);
-
-
             let spectrum = fft.analyze();
 
             let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100);
+            let snareEnergy = constrain(fft.getEnergy(250, 2000), 250, 2000)
+
 
             if (vid && vid.elt.readyState >= 2) {
                 myVida.update(vid);
@@ -92,13 +90,13 @@
                 rect(0, 0, width, height);
                 blendMode(BLEND);
 
-                if (isGray > 0.5) {
-                    filter(GRAY)
-                }
+                // if (isGray > 0.5) {
+                //     filter(GRAY)
+                // }
 
-                if (frameCount % 200 === 0) {
-                    isGray = random()
-                }
+                // if (frameCount % 200 === 0) {
+                //     isGray = random()
+                // }
 
                 // if (bg > 0.8) {
                 //     fill(0)
@@ -108,11 +106,15 @@
                 //     bg = random()
                 // }
 
+                // vid.speed(1);
+                let speed = map(bpm, 60, 180, 0.1, 1.75);
+                vid.speed(speed);
 
-                if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) {
+                if (kickEnergy > threshold && millis() - lastPeakTime > offset) {
                     // displayMode = (displayMode + 1) % 5;
                     displayMode = random([0, 1, 2, 3, 4])
                     lastPeakTime = millis();
+                    
                     color = random([
                         [255, 255, 0],   // Bright Yellow
                         [255, 0, 0],     // Bright Red
@@ -128,12 +130,8 @@
                     ]);
 
                 }
-                if (speed >= 0.5) {
-                    drawBlobs();
-                    vid.speed(speed);
-                } else {
-                    vid.speed(0);
-                }
+
+                drawBlobs();
 
             }
         }
@@ -201,7 +199,7 @@
 
                 }
             }
-
+            
             // if (displayMode === 2) {
             //     stroke(...color);
             //     for (let i = 0; i < points.length / 4; i++) {
@@ -250,8 +248,8 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("threshold-slider").addEventListener("input", (event) => {
-                kickThreshold = parseInt(event.target.value, 10);
-                document.getElementById("threshold-value").textContent = kickThreshold;
+                threshold = parseInt(event.target.value, 10);
+                document.getElementById("threshold-value").textContent = threshold;
             });
         });
     </script>
