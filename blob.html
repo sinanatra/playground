@@ -12,9 +12,9 @@
         let vid;
         let myVida;
         let mic, fft;
-        let threshold = 10;
+        let threshold = 0.004;
         let lastPeakTime = 0;
-        const offset = 1000;
+        const offset = 300;
         let displayMode = 0;
         let isGray = 0;
         let bg = 0;
@@ -23,6 +23,7 @@
         let currentVideoIndex = 0;
 
         let color = [255, 255, 255];
+        let previousval = 0;
 
         async function setup() {
             // pixelDensity(1);
@@ -34,6 +35,7 @@
             mic.start();
             fft = new p5.FFT(0.6, 256);
             fft.setInput(mic);
+            peakDetect = new p5.PeakDetect();
 
             currentVideoIndex = floor(random(0, videoUrls.length));
             await loadVideo();
@@ -73,12 +75,10 @@
         function draw() {
             // background(0);
 
-            let bassEnergy = fft.getEnergy("bass");
-            let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
             let spectrum = fft.analyze();
+            let wave = fft.waveform();
 
             let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100);
-            let snareEnergy = constrain(fft.getEnergy(250, 2000), 250, 2000)
 
 
             if (vid && vid.elt.readyState >= 2) {
@@ -90,31 +90,32 @@
                 rect(0, 0, width, height);
                 blendMode(BLEND);
 
-                // if (isGray > 0.5) {
-                //     filter(GRAY)
-                // }
+                fft.analyze();
+                let waveSum = 0;
+                for (let i = 0; i < wave.length; i++) {
+                    waveSum += abs(wave[i]);
+                }
+                let averageWaveEnergy = waveSum / wave.length;
 
-                // if (frameCount % 200 === 0) {
-                //     isGray = random()
-                // }
+                // let lowEnergy = fft.getEnergy(20, 250);       
+                // let midEnergy = fft.getEnergy(250, 2000);     
+                // let highEnergy = fft.getEnergy(2000, 20000);  
 
-                // if (bg > 0.8) {
-                //     fill(0)
-                //     rect(0, 0, width, height);
+                // let mode = 0;
+                // if (highEnergy > midEnergy && highEnergy > lowEnergy) {
+                //     mode = 2; // Highs: Draw lines
+                // } else if (midEnergy > lowEnergy) {
+                //     mode = 3; // Mids: Draw dots
+                // } else {
+                //     mode = 4; // Lows: Draw boxes
                 // }
-                // if (frameCount % 120 === 0) {
-                //     bg = random()
-                // }
+                if (previousval !== averageWaveEnergy && averageWaveEnergy > threshold && millis() - lastPeakTime > offset) {
+                    // displayMode = mode
+                    displayMode = random([0, 1, 2, 3, 4]);
 
-                // vid.speed(1);
-                let speed = map(bpm, 60, 180, 0.1, 1.75);
-                vid.speed(speed);
-
-                if (kickEnergy > threshold && millis() - lastPeakTime > offset) {
-                    // displayMode = (displayMode + 1) % 5;
-                    displayMode = random([0, 1, 2, 3, 4])
+                    console.log(displayMode, averageWaveEnergy);
                     lastPeakTime = millis();
-                    
+
                     color = random([
                         [255, 255, 0],   // Bright Yellow
                         [255, 0, 0],     // Bright Red
@@ -128,10 +129,13 @@
                         [255, 182, 193], // Light Pink
                         [240, 230, 140], // Khaki Yellow 
                     ]);
-
                 }
 
-                drawBlobs();
+                if (previousval !== averageWaveEnergy) {
+                    drawBlobs(wave);
+                }
+
+                previousval = averageWaveEnergy;
 
             }
         }
@@ -199,7 +203,7 @@
 
                 }
             }
-            
+
             // if (displayMode === 2) {
             //     stroke(...color);
             //     for (let i = 0; i < points.length / 4; i++) {
@@ -248,7 +252,7 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("threshold-slider").addEventListener("input", (event) => {
-                threshold = parseInt(event.target.value, 10);
+                threshold = event.target.value;
                 document.getElementById("threshold-value").textContent = threshold;
             });
         });
@@ -264,8 +268,8 @@
     <a href="grid.html">Video Grid</a>
     <span id="controls">
         |
-        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">100</span></label>
-        <input type="range" id="threshold-slider" min="10" max="2000" step="1" value="100" />
+        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">0.004</span></label>
+        <input type="range" id="threshold-slider" min="0.001" max="0.1" step="0.001" value="0.004" />
     </span>
 </header>
 
