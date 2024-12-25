@@ -77,7 +77,7 @@
             let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
 
             let speed = map(bpm, 60, 180, 0.1, 1.75);
-            vid.speed(speed);
+
 
             let spectrum = fft.analyze();
 
@@ -127,12 +127,14 @@
                         [240, 230, 140], // Khaki Yellow 
                     ]);
 
-
                 }
-
                 if (speed >= 0.5) {
                     drawBlobs();
+                    vid.speed(speed);
+                } else {
+                    vid.speed(0);
                 }
+
             }
         }
 
