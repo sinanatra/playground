@@ -69,13 +69,8 @@
             // speed = map(peak, 0, 255, 0.001, 0.02);
 
             let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 0, 180);
-            let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100); // Low frequencies for kicks
-            let snareEnergy = constrain(fft.getEnergy(250, 2000), 250, 2000); // Mid frequencies for snares
 
-            // speed = map(bpm, 60, 180, 0.01, 0.3);
-            if (kickEnergy > 20 && kickEnergy < 100) {
-                speed = map(kickEnergy, 20, 100, 0.01, 0.1);
-            }
+            speed = map(bpm, 60, 180, 0.01, 0.3);
 
             t += activity * speed;
             baseHue = (baseHue + 1) % 255;
