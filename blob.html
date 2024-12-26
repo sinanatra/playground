@@ -117,11 +117,10 @@
                 // } else {
                 //     mode = 4; // Lows: Draw boxes
                 // }
-                if (previousval !== averageWaveEnergy && averageWaveEnergy > threshold && millis() - lastPeakTime > offset) {
+                if (previousval !== averageWaveEnergy && averageWaveEnergy > threshold && millis() - lastPeakTime > offset || toggleReactivity && millis() - lastPeakTime > offset) {
                     // displayMode = mode
-                    displayMode = random([0, 1, 2, 3, 4]);
+                    displayMode = random(int([1, 2, 3, 4]));
 
-                    console.log(displayMode, averageWaveEnergy);
                     lastPeakTime = millis();
 
                     color = random([
@@ -139,7 +138,6 @@
                     ]);
                 }
 
-                console.log(toggleReactivity)
                 if (previousval !== averageWaveEnergy || toggleReactivity) {
                     drawBlobs(wave);
                 }
@@ -282,7 +280,7 @@
         <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">0.004</span></label>
         <input type="range" id="threshold-slider" min="0.001" max="0.1" step="0.001" value="0.004" />
     </span>
-  
+    <span> | Press 1 to toggle audio reactivity</span>
 </header>
 
 <body></body>
