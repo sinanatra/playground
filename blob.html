@@ -106,7 +106,9 @@
 
 
                 if (previousval !== averageWaveEnergy && averageWaveEnergy > threshold && millis() - lastPeakTime > offset || toggleReactivity && millis() - lastPeakTime > offset) {
+
                     displayMode = random(int([1, 2, 3, 4]));
+                    // displayMode = (displayMode + 1) % 5;
 
                     lastPeakTime = millis();
 
