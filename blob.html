@@ -88,13 +88,12 @@
 
             let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100);
 
-
             if (vid && vid.elt.readyState >= 2) {
                 myVida.update(vid);
                 image(vid, 0, 0, width, height);
 
                 blendMode(MULTIPLY);
-                fill(0, 90);
+                fill(0, 95);
                 rect(0, 0, width, height);
                 blendMode(BLEND);
 
@@ -105,20 +104,8 @@
                 }
                 let averageWaveEnergy = waveSum / wave.length;
 
-                // let lowEnergy = fft.getEnergy(20, 250);       
-                // let midEnergy = fft.getEnergy(250, 2000);     
-                // let highEnergy = fft.getEnergy(2000, 20000);  
 
-                // let mode = 0;
-                // if (highEnergy > midEnergy && highEnergy > lowEnergy) {
-                //     mode = 2; // Highs: Draw lines
-                // } else if (midEnergy > lowEnergy) {
-                //     mode = 3; // Mids: Draw dots
-                // } else {
-                //     mode = 4; // Lows: Draw boxes
-                // }
                 if (previousval !== averageWaveEnergy && averageWaveEnergy > threshold && millis() - lastPeakTime > offset || toggleReactivity && millis() - lastPeakTime > offset) {
-                    // displayMode = mode
                     displayMode = random(int([1, 2, 3, 4]));
 
                     lastPeakTime = millis();
@@ -185,8 +172,8 @@
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
-                        // textSize(6);
-                        // text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
+                        textSize(6);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
                         break;
                     case 3:
                         noStroke();
@@ -211,18 +198,8 @@
                 }
             }
 
-            // if (displayMode === 2) {
-            //     stroke(...color);
-            //     for (let i = 0; i < points.length / 4; i++) {
-            //         for (let j = i + 1; j < points.length; j++) {
-            //             line(points[i].x, points[i].y, points[j].x, points[j].y);
-            //         }
-            //     }
-            // }
-            // console.log(points.length)
             if (displayMode === 2 && points.length <= 30) {
                 stroke(...color);
-                // strokeWeight(.5)
                 noFill();
 
                 for (let i = 0; i < points.length / 3; i++) {
