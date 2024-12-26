@@ -29,7 +29,7 @@
         async function setup() {
             // pixelDensity(1);
             createCanvas(windowWidth, windowHeight);
-            textAlign(CENTER, CENTER);
+            textAlign(LEFT, LEFT);
 
             userStartAudio();
             mic = new p5.AudioIn();
@@ -162,7 +162,7 @@
                         noStroke();
                         fill(...color);
                         textSize(8);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX - 20, rectY - 10, 50);
+                        text(`ID: ${b.id}`, rectX, rectY - 10, rectW - 20);
                         break;
                     case 1:
                         noStroke();
@@ -175,14 +175,14 @@
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 10, rectY + 10);
                         break;
                     case 3:
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY - 5);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 10, rectY + 10);
                         break;
                     case 4:
                         noFill();
@@ -195,7 +195,7 @@
                         noStroke();
                         fill(...color);
                         textSize(8);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX - 20, rectY - 10, 50);
+                        text(`ID: ${b.id}`, rectX, rectY - 10, rectW - 20);
 
                 }
             }
