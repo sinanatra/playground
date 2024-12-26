@@ -14,7 +14,7 @@
         let mic, fft;
         let threshold = 0.004;
         let lastPeakTime = 0;
-        const offset = 300;
+        const offset = 500;
         let displayMode = 0;
         let isGray = 0;
         let bg = 0;
@@ -24,7 +24,7 @@
 
         let color = [255, 255, 255];
         let previousval = 0;
-        let toggleReactivity = false;
+        let toggleReactivity = true;
 
         async function setup() {
             // pixelDensity(1);
