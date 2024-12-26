@@ -24,6 +24,7 @@
 
         let color = [255, 255, 255];
         let previousval = 0;
+        let toggleReactivity = false;
 
         async function setup() {
             // pixelDensity(1);
@@ -70,6 +71,13 @@
                 vid.time(randomStartTime);
                 console.log(`Video loaded: ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`);
             };
+        }
+
+        function keyPressed() {
+            if (key === '1') {
+                toggleReactivity = !toggleReactivity;
+                console.log(`Audio Reactivity: ${toggleReactivity}`);
+            }
         }
 
         function draw() {
@@ -131,7 +139,8 @@
                     ]);
                 }
 
-                if (previousval !== averageWaveEnergy) {
+                console.log(toggleReactivity)
+                if (previousval !== averageWaveEnergy || toggleReactivity) {
                     drawBlobs(wave);
                 }
 
@@ -256,6 +265,8 @@
                 document.getElementById("threshold-value").textContent = threshold;
             });
         });
+
+
     </script>
 </head>
 
@@ -271,6 +282,7 @@
         <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">0.004</span></label>
         <input type="range" id="threshold-slider" min="0.001" max="0.1" step="0.001" value="0.004" />
     </span>
+  
 </header>
 
 <body></body>
@@ -287,7 +299,7 @@
         background: black;
         color: white;
         text-align: center;
-        padding: 10px 0;
+        padding: 10px 10px;
         position: absolute;
     }
 
