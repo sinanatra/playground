@@ -18,8 +18,8 @@
         let displayMode = 0;
         let isGray = 0;
         let bg = 0;
-        let videoChangeInterval = 50000;
-        let videoUrls = ['video_1.mp4', 'video_2.mp4', 'video_3.mp4', 'video_4.mp4'];
+        let videoChangeInterval = 60000 * 5;
+        let videoUrls = ['video_1.mp4', 'video_3.mp4', 'video_4.mp4', 'kyo_2.mp4', 'kyo_3.mp4', 'kyo_4.mp4'];
         let currentVideoIndex = 0;
 
         let color = [255, 255, 255];
@@ -177,15 +177,15 @@
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 12, rectY + 12);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY + 12);
                         break;
                     case 3:
-                        textAlign(CENTER, CENTER); 
+                        textAlign(CENTER, CENTER);
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 12, rectY + 12);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY + 12);
                         break;
                     case 4:
                         noFill();
