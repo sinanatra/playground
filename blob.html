@@ -59,6 +59,7 @@
         }
 
         async function loadVideo() {
+            if (vid) vid.pause();
             if (vid) vid.remove();
             vid = createVideo(videoUrls[currentVideoIndex]);
             vid.size(320, 240);
@@ -171,18 +172,20 @@
                         text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY);
                         break;
                     case 2:
+                        textAlign(CENTER, CENTER);
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 10, rectY + 10);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 12, rectY + 12);
                         break;
                     case 3:
+                        textAlign(CENTER, CENTER); 
                         noStroke();
                         fill(...color);
                         ellipse(massX, massY, 5, 5);
                         textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 10, rectY + 10);
+                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX + 12, rectY + 12);
                         break;
                     case 4:
                         noFill();
