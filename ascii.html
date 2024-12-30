@@ -18,6 +18,7 @@
         let speed = 0.01
         let wave = 100
         let baseHue = 0;
+        let grid = 25;
 
         function setup() {
             colorMode(HSB, 255);
@@ -62,7 +63,7 @@
             }
             if (frameCount % 200 === 0) {
                 wave = random([
-                    0.1, 100, 200, 300, 400, 500, 900,
+                    0.1, 100, 200, 300, 400, 500,
                 ]);
             }
 
@@ -80,8 +81,8 @@
         }
 
         function renderASCII(time, energy, dynamicScale) {
-            gridCols = floor(width / 25);
-            gridRows = floor(height / 25);
+            gridCols = floor(width / grid);
+            gridRows = floor(height / grid);
             const charSize = width / gridCols;
 
             textSize(charSize);
@@ -126,6 +127,13 @@
         function windowResized() {
             resizeCanvas(windowWidth, windowHeight);
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("grid-slider").addEventListener("input", (event) => {
+                grid = event.target.value;
+                document.getElementById("grid-value").textContent = grid;
+            });
+        });
     </script>
 </head>
 
@@ -135,6 +143,11 @@
     <a href="blob.html">Detection</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
+    <span id="controls">
+        |
+        <label for="grid-slider" style="color: white;">Grid: <span id="grid-value">25</span></label>
+        <input type="range" id="grid-slider" min="20" max="80" step="1" value="25" />
+    </span>
 </header>
 
 <body></body>
