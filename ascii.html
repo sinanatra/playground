@@ -39,11 +39,11 @@
         function draw() {
             background(0);
 
-            const spectrum = fft.analyze();
-            const bassEnergy = fft.getEnergy("bass");
-            const activity = map(bassEnergy, 0, 255, 0, 1);
+            // const spectrum = fft.analyze();
+            // const bassEnergy = fft.getEnergy("bass");
+            const activity = 1 //constrain(map(bassEnergy, 0, 255, 0, 1), 0, 1);
 
-            let peak = Math.max(...spectrum);
+            // let peak = Math.max(...spectrum);
 
             if (frameCount % 100 === 0) {
                 asciiGradient = random([
@@ -68,9 +68,10 @@
 
             // speed = map(peak, 0, 255, 0.001, 0.02);
 
-            let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 0, 180);
+            // let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 0, 180);
 
-            speed = map(bpm, 60, 180, 0.01, 0.3);
+            // speed = map(bpm, 60, 180, 0.01, 0.03);
+            speed = 0.01
 
             t += activity * speed;
             baseHue = (baseHue + 1) % 255;
@@ -79,8 +80,8 @@
         }
 
         function renderASCII(time, energy, dynamicScale) {
-            gridCols = floor(width / 20);
-            gridRows = floor(height / 20);
+            gridCols = floor(width / 25);
+            gridRows = floor(height / 25);
             const charSize = width / gridCols;
 
             textSize(charSize);
