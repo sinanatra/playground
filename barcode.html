@@ -128,6 +128,7 @@
     <a href="blob.html">Detection</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
+    <a href="frame.html">Frame</a>
     <span id="controls">
         |
         <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">200</span></label>
@@ -146,12 +147,18 @@
         font-family: Arial, Helvetica, sans-serif;
     }
 
+   
     header {
         background: black;
         color: white;
-        text-align: center;
         padding: 10px 0;
         position: absolute;
+        width: 100%;
+        opacity: 0;
+    }
+
+    header:hover {
+        opacity: 1;
     }
 
     header a {

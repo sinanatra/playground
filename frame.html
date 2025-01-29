@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> `.-':_,^=;+!r </title>
+    <script src="p5.min.js"></script>
+    <script>
+        let frameImg;
+        let video;
+        let maskGraphics;
+        let w = 170, h = 220;
+        let scaleFactor = 1.0;
+        let showMask = true;
+
+        function preload() {
+            frameImg = loadImage('mask.png');
+            video = createVideo(['hallo.mp4'], () => {
+                video.loop();
+                video.volume(0);
+            });
+            video.hide();
+        }
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            video.play();
+            maskGraphics = createGraphics(w, h);
+
+
+            let slider = document.getElementById("resize-slider");
+            slider.addEventListener("input", () => {
+                scaleFactor = slider.value / 200;
+            });
+
+
+            let toggleMask = document.getElementById("toggle-mask");
+            toggleMask.addEventListener("change", () => {
+                showMask = toggleMask.checked;
+            });
+        }
+
+        function draw() {
+            clear();
+            background(0);
+
+            let scaledW = w * scaleFactor;
+            let scaledH = h * scaleFactor;
+
+            maskGraphics.clear();
+            maskGraphics.fill(255);
+            maskGraphics.ellipse(maskGraphics.width / 2, maskGraphics.height / 2, w, h);
+
+            let maskedVideo = video.get();
+            maskedVideo.mask(maskGraphics);
+
+            let videoX = width / 2 - scaledW / 2;
+            let videoY = height / 2 - scaledH / 2;
+            image(maskedVideo, videoX, videoY, scaledW, scaledH);
+
+            if (showMask) {
+                let frameScaledW = frameImg.width * scaleFactor;
+                let frameScaledH = frameImg.height * scaleFactor;
+                let frameX = (width - frameScaledW) / 2;
+                let frameY = (height - frameScaledH + 30 * scaleFactor) / 2;
+
+                push();
+                tint(255, 255, 0);
+                image(frameImg, frameX, frameY, frameScaledW, frameScaledH);
+                pop();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</head>
+
+<header>
+    <a href="datamosh.html">Datamosh</a>
+    <a href="barcode.html">Barcode</a>
+    <a href="blob.html">Detection</a>
+    <a href="vol.html">Volume</a>
+    <a href="ascii.html">Ascii</a>
+    <a href="frame.html">Frame</a>
+    <span id="controls">
+        |
+        <label for="resize-slider" style="color: white;">Resize: <span id="resize-value">200</span></label>
+        <input type="range" id="resize-slider" min="10" max="500" step="1" value="200" />
+        |
+        <label for="toggle-mask" style="color: white;">Show Mask</label>
+        <input type="checkbox" id="toggle-mask" checked />
+    </span>
+</header>
+
+<body></body>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, Helvetica, sans-serif;
+        background: black;
+    }
+
+    header {
+        background: black;
+        color: white;
+        padding: 10px 0;
+        position: absolute;
+        width: 100%;
+        opacity: 0;
+    }
+
+    header:hover {
+        opacity: 1;
+    }
+
+    header a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+
+</html>
