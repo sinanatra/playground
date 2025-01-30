@@ -14,6 +14,10 @@
         let scaleFactor = 1.0;
         let showMask = true;
 
+        let posX, posY;
+        let dragging = false;
+        let offsetX, offsetY;
+
         function preload() {
             frameImg = loadImage('mask.png');
             video = createVideo(['hallo.mp4'], () => {
@@ -28,12 +32,13 @@
             video.play();
             maskGraphics = createGraphics(w, h);
 
+            posX = width / 2;
+            posY = height / 2;
 
             let slider = document.getElementById("resize-slider");
             slider.addEventListener("input", () => {
                 scaleFactor = slider.value / 200;
             });
-
 
             let toggleMask = document.getElementById("toggle-mask");
             toggleMask.addEventListener("change", () => {
@@ -55,21 +60,45 @@
             let maskedVideo = video.get();
             maskedVideo.mask(maskGraphics);
 
-            let videoX = width / 2 - scaledW / 2;
-            let videoY = height / 2 - scaledH / 2;
+            let videoX = posX - scaledW / 2;
+            let videoY = posY - scaledH / 2;
             image(maskedVideo, videoX, videoY, scaledW, scaledH);
 
             if (showMask) {
                 let frameScaledW = frameImg.width * scaleFactor;
                 let frameScaledH = frameImg.height * scaleFactor;
-                let frameX = (width - frameScaledW) / 2;
-                let frameY = (height - frameScaledH + 30 * scaleFactor) / 2;
+                let frameX = posX - frameScaledW / 2  - 2;
+                let frameY = posY - frameScaledH / 2 + 18 * scaleFactor;
 
                 push();
                 tint(255, 255, 0);
                 image(frameImg, frameX, frameY, frameScaledW, frameScaledH);
                 pop();
             }
+        }
+
+        function mousePressed() {
+            let scaledW = w * scaleFactor;
+            let scaledH = h * scaleFactor;
+            if (
+                mouseX > posX - scaledW / 2 && mouseX < posX + scaledW / 2 &&
+                mouseY > posY - scaledH / 2 && mouseY < posY + scaledH / 2
+            ) {
+                dragging = true;
+                offsetX = mouseX - posX;
+                offsetY = mouseY - posY;
+            }
+        }
+
+        function mouseDragged() {
+            if (dragging) {
+                posX = mouseX - offsetX;
+                posY = mouseY - offsetY;
+            }
+        }
+
+        function mouseReleased() {
+            dragging = false;
         }
 
         function windowResized() {
