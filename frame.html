@@ -1,218 +1,373 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> `.-':_,^=;+!r </title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script>
-        let frameImg;
-        let video;
-        let maskGraphics;
-        let w = 170, h = 220;
-        let scaleFactor = 1.0;
-        let showMask = true;
-        let maskColor = [255, 255, 0];
+      let frameImg;
+      let video;
 
-        let posX, posY;
-        let dragging = false;
-        let offsetX, offsetY;
+      let videoPosX, videoPosY;
+      let videoWidth, videoHeight;
 
-        function preload() {
-            frameImg = loadImage('mask.png');
-            loadVideo("hallo.mp4");
+      let framePosX, framePosY;
+      let frameWidth, frameHeight;
+
+      let showMask = false;
+      let maskColor = [255, 255, 0];
+
+      let draggingVideo = false,
+        draggingFrame = false;
+      let offsetVideoX = 0,
+        offsetVideoY = 0;
+      let offsetFrameX = 0,
+        offsetFrameY = 0;
+
+      let videoSequence = [];
+      let currentVideoIndex = 0;
+
+      function preload() {
+        frameImg = loadImage("mask.png");
+
+        loadVideo("hallo.mp4");
+      }
+
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+
+        videoPosX = width / 2;
+        videoPosY = height / 2;
+
+        framePosX = width / 2 + 50;
+        framePosY = height / 2 + 50;
+
+        videoWidth = 170;
+        videoHeight = 220;
+
+        frameWidth = frameImg.width;
+        frameHeight = frameImg.height;
+
+        document.getElementById("video-width-slider").value = videoWidth;
+        document.getElementById("video-width-value").innerText = videoWidth;
+        document.getElementById("video-height-slider").value = videoHeight;
+        document.getElementById("video-height-value").innerText = videoHeight;
+        document.getElementById("frame-width-slider").value = frameWidth;
+        document.getElementById("frame-width-value").innerText = frameWidth;
+        document.getElementById("frame-height-slider").value = frameHeight;
+        document.getElementById("frame-height-value").innerText = frameHeight;
+
+        document
+          .getElementById("video-width-slider")
+          .addEventListener("input", function () {
+            videoWidth = parseInt(this.value);
+            document.getElementById("video-width-value").innerText = this.value;
+          });
+
+        document
+          .getElementById("video-height-slider")
+          .addEventListener("input", function () {
+            videoHeight = parseInt(this.value);
+            document.getElementById("video-height-value").innerText =
+              this.value;
+          });
+
+        document
+          .getElementById("frame-width-slider")
+          .addEventListener("input", function () {
+            frameWidth = parseInt(this.value);
+            document.getElementById("frame-width-value").innerText = this.value;
+          });
+        document
+          .getElementById("frame-height-slider")
+          .addEventListener("input", function () {
+            frameHeight = parseInt(this.value);
+            document.getElementById("frame-height-value").innerText =
+              this.value;
+          });
+
+        let toggleMask = document.getElementById("toggle-mask");
+        toggleMask.addEventListener("change", () => {
+          showMask = toggleMask.checked;
+        });
+
+        document
+          .getElementById("video1")
+          .addEventListener("click", () => loadVideo("hallo.mp4"));
+        document
+          .getElementById("video2")
+          .addEventListener("click", () => loadVideo("video2.mp4"));
+
+        document
+          .getElementById("submit-url")
+          .addEventListener("click", loadVideoFromInput);
+
+        document
+          .getElementById("mask-color")
+          .addEventListener("input", (event) => {
+            let hexColor = event.target.value;
+            maskColor = hexToRgb(hexColor);
+          });
+
+        document
+          .getElementById("video-sequence")
+          .addEventListener("click", loadVideoSequence);
+      }
+
+      function loadVideo(src) {
+        if (video) {
+          video.remove();
+        }
+        video = createVideo([src], () => {
+          video.loop();
+          video.volume(0);
+        });
+        video.hide();
+      }
+
+      function loadVideoFromInput() {
+        let inputUrl = document.getElementById("video-url").value;
+        if (inputUrl.trim() !== "") {
+          loadVideo(inputUrl);
+        }
+      }
+
+      function loadVideoSequence() {
+        videoSequence = ["mask/frame_1.mp4", "mask/frame_2.mp4", "mask/frame_3.mp4", "mask/frame_4.mp4", "mask/frame_5.mp4"];
+        currentVideoIndex = 0;
+        loadVideoSequenceVideo(videoSequence[currentVideoIndex]);
+      }
+
+      function loadVideoSequenceVideo(src) {
+        if (video) {
+          video.remove();
+        }
+        video = createVideo([src], () => {
+          video.volume(0);
+          video.play();
+        });
+        video.hide();
+
+        video.elt.addEventListener("ended", nextVideoInSequence);
+      }
+
+      function nextVideoInSequence() {
+        currentVideoIndex++;
+        if (currentVideoIndex >= videoSequence.length) {
+          currentVideoIndex = 0;
+        }
+        loadVideoSequenceVideo(videoSequence[currentVideoIndex]);
+      }
+
+      function draw() {
+        clear();
+        background(0);
+
+        let maskG = createGraphics(videoWidth, videoHeight);
+        maskG.clear();
+        maskG.fill(255);
+        maskG.noStroke();
+        maskG.ellipse(videoWidth / 2, videoHeight / 2, videoWidth, videoHeight);
+
+        if (video) {
+          let maskedVideo = video.get();
+          maskedVideo.mask(maskG);
+
+          let videoX = videoPosX - videoWidth / 2;
+          let videoY = videoPosY - videoHeight / 2;
+          image(maskedVideo, videoX, videoY, videoWidth, videoHeight);
         }
 
-        function setup() {
-            createCanvas(windowWidth, windowHeight);
-            maskGraphics = createGraphics(w, h);
-            posX = width / 2;
-            posY = height / 2;
+        if (showMask) {
+          let frameX = framePosX - frameWidth / 2;
+          let frameY = framePosY - frameHeight / 2;
+          push();
+          tint(maskColor[0], maskColor[1], maskColor[2]);
+          image(frameImg, frameX, frameY, frameWidth, frameHeight);
+          pop();
+        }
+      }
 
-            let slider = document.getElementById("resize-slider");
-            slider.addEventListener("input", () => {
-                scaleFactor = slider.value / 200;
-            });
-
-            let toggleMask = document.getElementById("toggle-mask");
-            toggleMask.addEventListener("change", () => {
-                showMask = toggleMask.checked;
-            });
-
-            document.getElementById("video1").addEventListener("click", () => loadVideo("hallo.mp4"));
-            document.getElementById("video2").addEventListener("click", () => loadVideo("video2.mp4"));
-
-            document.getElementById("submit-url").addEventListener("click", loadVideoFromInput);
-
-
-            document.getElementById("mask-color").addEventListener("input", (event) => {
-                let hexColor = event.target.value;
-                maskColor = hexToRgb(hexColor);
-            });
+      function mousePressed() {
+        let fX = framePosX - frameWidth / 2;
+        let fY = framePosY - frameHeight / 2;
+        if (
+          mouseX > fX &&
+          mouseX < fX + frameWidth &&
+          mouseY > fY &&
+          mouseY < fY + frameHeight
+        ) {
+          draggingFrame = true;
+          offsetFrameX = mouseX - framePosX;
+          offsetFrameY = mouseY - framePosY;
+          return;
         }
 
-        function loadVideo(src) {
-            if (video) {
-                video.remove();
-            }
-            video = createVideo([src], () => {
-                video.loop();
-                video.volume(0);
-            });
-            video.hide();
+        let vX = videoPosX - videoWidth / 2;
+        let vY = videoPosY - videoHeight / 2;
+        if (
+          mouseX > vX &&
+          mouseX < vX + videoWidth &&
+          mouseY > vY &&
+          mouseY < vY + videoHeight
+        ) {
+          draggingVideo = true;
+          offsetVideoX = mouseX - videoPosX;
+          offsetVideoY = mouseY - videoPosY;
         }
+      }
 
-        function loadVideoFromInput() {
-            let inputUrl = document.getElementById("video-url").value;
-            if (inputUrl.trim() !== "") {
-                loadVideo(inputUrl);
-            }
+      function mouseDragged() {
+        if (draggingFrame) {
+          framePosX = mouseX - offsetFrameX;
+          framePosY = mouseY - offsetFrameY;
         }
-
-        function draw() {
-            clear();
-            background(0);
-
-            let scaledW = w * scaleFactor;
-            let scaledH = h * scaleFactor;
-
-            maskGraphics.clear();
-            maskGraphics.fill(255);
-            maskGraphics.ellipse(maskGraphics.width / 2, maskGraphics.height / 2, w, h);
-
-            let maskedVideo = video.get();
-            maskedVideo.mask(maskGraphics);
-
-            let videoX = posX - scaledW / 2;
-            let videoY = posY - scaledH / 2;
-            image(maskedVideo, videoX, videoY, scaledW, scaledH);
-
-            if (showMask) {
-                let frameScaledW = frameImg.width * scaleFactor;
-                let frameScaledH = frameImg.height * scaleFactor;
-                let frameX = posX - frameScaledW / 2;
-                let frameY = posY - frameScaledH / 2 + 18 * scaleFactor;
-
-                push();
-                tint(maskColor[0], maskColor[1], maskColor[2]);
-                image(frameImg, frameX, frameY, frameScaledW, frameScaledH);
-                pop();
-            }
+        if (draggingVideo) {
+          videoPosX = mouseX - offsetVideoX;
+          videoPosY = mouseY - offsetVideoY;
         }
+      }
 
-        function mousePressed() {
-            let scaledW = w * scaleFactor;
-            let scaledH = h * scaleFactor;
-            if (
-                mouseX > posX - scaledW / 2 && mouseX < posX + scaledW / 2 &&
-                mouseY > posY - scaledH / 2 && mouseY < posY + scaledH / 2
-            ) {
-                dragging = true;
-                offsetX = mouseX - posX;
-                offsetY = mouseY - posY;
-            }
-        }
+      function mouseReleased() {
+        draggingFrame = false;
+        draggingVideo = false;
+      }
 
-        function mouseDragged() {
-            if (dragging) {
-                posX = mouseX - offsetX;
-                posY = mouseY - offsetY;
-            }
-        }
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
 
-        function mouseReleased() {
-            dragging = false;
-        }
-
-        function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
-        }
-
-
-        function hexToRgb(hex) {
-            let bigint = parseInt(hex.substring(1), 16);
-            return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
-        }
+      function hexToRgb(hex) {
+        let bigint = parseInt(hex.substring(1), 16);
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+      }
     </script>
-</head>
-
-<header>
+  </head>
+  <header>
     <a href="datamosh.html">Datamosh</a>
     <a href="barcode.html">Barcode</a>
     <a href="blob.html">Detection</a>
     <a href="vol.html">Volume</a>
     <a href="ascii.html">Ascii</a>
     <a href="frame.html">Frame</a>
+    <br />
     <span id="controls">
-        |
-        <label for="resize-slider" style="color: white;">Resize: <span id="resize-value">200</span></label>
-        <input type="range" id="resize-slider" min="10" max="500" step="1" value="200" />
-        |
-        <label for="toggle-mask" style="color: white;">Show Mask</label>
-        <input type="checkbox" id="toggle-mask" checked />
-        |
-        <button id="video1">Video 1</button>
-        <button id="video2">Video 2</button>
-        |
-        <input type="text" id="video-url" placeholder="Enter video URL"
-            value="https://videos.pexels.com/video-files/6507518/6507518-hd_1920_1080_25fps.mp4" />
-        <button id="submit-url">Load Video</button>
-        |
-        <label for="mask-color" style="color: white;">Mask Color</label>
-        <input type="color" id="mask-color" value="#ffff00" />
+      <label for="video-width-slider" style="color: white"
+        >Video Width: <span id="video-width-value">170</span></label
+      >
+      <input
+        type="range"
+        id="video-width-slider"
+        min="10"
+        max="500"
+        value="170"
+      />
+      |
+      <label for="video-height-slider" style="color: white"
+        >Video Height: <span id="video-height-value">220</span></label
+      >
+      <input
+        type="range"
+        id="video-height-slider"
+        min="10"
+        max="500"
+        value="220"
+      />
+      |
+      <label for="frame-width-slider" style="color: white"
+        >Frame Width: <span id="frame-width-value">300</span></label
+      >
+      <input
+        type="range"
+        id="frame-width-slider"
+        min="10"
+        max="500"
+        value="300"
+      />
+      |
+      <label for="frame-height-slider" style="color: white"
+        >Frame Height: <span id="frame-height-value">300</span></label
+      >
+      <input
+        type="range"
+        id="frame-height-slider"
+        min="10"
+        max="500"
+        value="300"
+      />
+      |
+      <label for="toggle-mask" style="color: white">Show Mask</label>
+      <input type="checkbox" id="toggle-mask"  />
+      <br />
+
+      <button id="video1">Video 1</button>
+      <button id="video2">Video 2</button>
+      |
+
+      <button id="video-sequence">Video Sequence</button>
+      |
+      <input
+        type="text"
+        id="video-url"
+        placeholder="Enter video URL"
+        value="https://videos.pexels.com/video-files/6507518/6507518-hd_1920_1080_25fps.mp4"
+      />
+      <button id="submit-url">Load Video</button>
+      |
+      <label for="mask-color" style="color: white">Mask Color</label>
+      <input type="color" id="mask-color" value="#ffff00" />
     </span>
-</header>
-
-<body></body>
-
-<style>
+  </header>
+  <body></body>
+  <style>
     body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, Helvetica, sans-serif;
-        background: black;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: black;
     }
 
     header {
-        background: black;
-        color: white;
-        padding: 10px 0;
-        position: absolute;
-        width: 100%;
-        opacity: 0;
+      background: black;
+      color: white;
+      padding: 10px 0;
+      position: fixed;
+      width: 100%;
+      bottom: 10px;
+      left: 10px;
+      opacity: 0;
     }
 
     header:hover {
-        opacity: 1;
+      opacity: 1;
     }
 
     header a {
-        margin: 0 10px;
-        color: white;
-        text-decoration: none;
+      margin: 0 10px;
+      color: white;
+      text-decoration: none;
     }
 
     button {
-        background-color: white;
-        border: none;
-        padding: 5px 10px;
-        margin: 5px;
-        cursor: pointer;
+      background-color: white;
+      border: none;
+      padding: 5px 10px;
+      margin: 5px;
+      cursor: pointer;
     }
 
     button:hover {
-        background-color: gray;
+      background-color: gray;
     }
 
     input[type="text"],
     input[type="color"] {
-        padding: 5px;
-        margin: 5px;
-        border: none;
-        border-radius: 3px;
+      padding: 5px;
+      margin: 5px;
+      border: none;
+      border-radius: 3px;
     }
-</style>
-
+  </style>
 </html>
