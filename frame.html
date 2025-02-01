@@ -4,8 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>.-':_,^=;+!r</title>
+
     <script src="p5.min.js"></script>
-    <script>
+    <script defer>
       let frameImg;
       let video;
 
@@ -15,7 +16,7 @@
       let framePosX, framePosY;
       let frameWidth, frameHeight;
 
-      let showMask = false;
+      let showMask = true;
       let maskColor = [255, 255, 0];
 
       let draggingVideo = false,
@@ -30,8 +31,6 @@
 
       function preload() {
         frameImg = loadImage("mask.png");
-
-        loadVideo("hallo.mp4");
       }
 
       function setup() {
@@ -39,13 +38,11 @@
 
         videoPosX = width / 2;
         videoPosY = height / 2;
-
-        framePosX = width / 2 + 50;
-        framePosY = height / 2 + 50;
+        framePosX = width / 2;
+        framePosY = height / 2;
 
         videoWidth = 170;
-        videoHeight = 220;
-
+        videoHeight = 250;
         frameWidth = frameImg.width;
         frameHeight = frameImg.height;
 
@@ -64,7 +61,6 @@
             videoWidth = parseInt(this.value);
             document.getElementById("video-width-value").innerText = this.value;
           });
-
         document
           .getElementById("video-height-slider")
           .addEventListener("input", function () {
@@ -87,10 +83,11 @@
               this.value;
           });
 
-        let toggleMask = document.getElementById("toggle-mask");
-        toggleMask.addEventListener("change", () => {
-          showMask = toggleMask.checked;
-        });
+        document
+          .getElementById("toggle-mask")
+          .addEventListener("change", (e) => {
+            showMask = e.target.checked;
+          });
 
         document
           .getElementById("video1")
@@ -104,15 +101,14 @@
           .addEventListener("click", loadVideoFromInput);
 
         document
-          .getElementById("mask-color")
-          .addEventListener("input", (event) => {
-            let hexColor = event.target.value;
-            maskColor = hexToRgb(hexColor);
-          });
-
-        document
           .getElementById("video-sequence")
           .addEventListener("click", loadVideoSequence);
+
+        document.getElementById("mask-color").addEventListener("input", (e) => {
+          maskColor = hexToRgb(e.target.value);
+        });
+
+        loadVideoSequence();
       }
 
       function loadVideo(src) {
@@ -120,21 +116,27 @@
           video.remove();
         }
         video = createVideo([src], () => {
+          video.elt.muted = true;
           video.loop();
-          video.volume(0);
         });
         video.hide();
       }
 
       function loadVideoFromInput() {
-        let inputUrl = document.getElementById("video-url").value;
+        const inputUrl = document.getElementById("video-url").value;
         if (inputUrl.trim() !== "") {
           loadVideo(inputUrl);
         }
       }
 
       function loadVideoSequence() {
-        videoSequence = ["mask/frame_1.mp4", "mask/frame_2.mp4", "mask/frame_3.mp4", "mask/frame_4.mp4", "mask/frame_5.mp4"];
+        videoSequence = [
+          "mask/frame_1.mp4",
+          "mask/frame_2.mp4",
+          "mask/frame_3.mp4",
+          "mask/frame_4.mp4",
+          "mask/frame_5.mp4",
+        ];
         currentVideoIndex = 0;
         loadVideoSequenceVideo(videoSequence[currentVideoIndex]);
       }
@@ -143,12 +145,13 @@
         if (video) {
           video.remove();
         }
+
         video = createVideo([src], () => {
+          video.elt.muted = true;
           video.volume(0);
           video.play();
         });
         video.hide();
-
         video.elt.addEventListener("ended", nextVideoInSequence);
       }
 
@@ -164,24 +167,24 @@
         clear();
         background(0);
 
-        let maskG = createGraphics(videoWidth, videoHeight);
+        const maskG = createGraphics(videoWidth, videoHeight);
         maskG.clear();
         maskG.fill(255);
         maskG.noStroke();
         maskG.ellipse(videoWidth / 2, videoHeight / 2, videoWidth, videoHeight);
 
         if (video) {
-          let maskedVideo = video.get();
+          const maskedVideo = video.get();
           maskedVideo.mask(maskG);
 
-          let videoX = videoPosX - videoWidth / 2;
-          let videoY = videoPosY - videoHeight / 2;
+          const videoX = videoPosX - videoWidth / 2;
+          const videoY = videoPosY - videoHeight / 2;
           image(maskedVideo, videoX, videoY, videoWidth, videoHeight);
         }
 
         if (showMask) {
-          let frameX = framePosX - frameWidth / 2;
-          let frameY = framePosY - frameHeight / 2;
+          const frameX = framePosX - frameWidth / 2;
+          const frameY = framePosY - frameHeight / 2;
           push();
           tint(maskColor[0], maskColor[1], maskColor[2]);
           image(frameImg, frameX, frameY, frameWidth, frameHeight);
@@ -190,8 +193,8 @@
       }
 
       function mousePressed() {
-        let fX = framePosX - frameWidth / 2;
-        let fY = framePosY - frameHeight / 2;
+        const fX = framePosX - frameWidth / 2;
+        const fY = framePosY - frameHeight / 2;
         if (
           mouseX > fX &&
           mouseX < fX + frameWidth &&
@@ -204,8 +207,8 @@
           return;
         }
 
-        let vX = videoPosX - videoWidth / 2;
-        let vY = videoPosY - videoHeight / 2;
+        const vX = videoPosX - videoWidth / 2;
+        const vY = videoPosY - videoHeight / 2;
         if (
           mouseX > vX &&
           mouseX < vX + videoWidth &&
@@ -239,23 +242,25 @@
       }
 
       function hexToRgb(hex) {
-        let bigint = parseInt(hex.substring(1), 16);
+        const bigint = parseInt(hex.substring(1), 16);
         return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
       }
     </script>
   </head>
-  <header>
-    <a href="datamosh.html">Datamosh</a>
-    <a href="barcode.html">Barcode</a>
-    <a href="blob.html">Detection</a>
-    <a href="vol.html">Volume</a>
-    <a href="ascii.html">Ascii</a>
-    <a href="frame.html">Frame</a>
-    <br />
-    <span id="controls">
-      <label for="video-width-slider" style="color: white"
-        >Video Width: <span id="video-width-value">170</span></label
-      >
+  <body>
+    <header>
+      <a href="datamosh.html">Datamosh</a>
+      <a href="barcode.html">Barcode</a>
+      <a href="blob.html">Detection</a>
+      <a href="vol.html">Volume</a>
+      <a href="ascii.html">Ascii</a>
+      <a href="frame.html">Frame</a>
+    </header>
+
+    <div id="controls">
+      <label for="video-width-slider" style="color: white">
+        Video Width: <span id="video-width-value">170</span>
+      </label>
       <input
         type="range"
         id="video-width-slider"
@@ -264,9 +269,9 @@
         value="170"
       />
       |
-      <label for="video-height-slider" style="color: white"
-        >Video Height: <span id="video-height-value">220</span></label
-      >
+      <label for="video-height-slider" style="color: white">
+        Video Height: <span id="video-height-value">220</span>
+      </label>
       <input
         type="range"
         id="video-height-slider"
@@ -275,9 +280,9 @@
         value="220"
       />
       |
-      <label for="frame-width-slider" style="color: white"
-        >Frame Width: <span id="frame-width-value">300</span></label
-      >
+      <label for="frame-width-slider" style="color: white">
+        Frame Width: <span id="frame-width-value">300</span>
+      </label>
       <input
         type="range"
         id="frame-width-slider"
@@ -286,9 +291,9 @@
         value="300"
       />
       |
-      <label for="frame-height-slider" style="color: white"
-        >Frame Height: <span id="frame-height-value">300</span></label
-      >
+      <label for="frame-height-slider" style="color: white">
+        Frame Height: <span id="frame-height-value">300</span>
+      </label>
       <input
         type="range"
         id="frame-height-slider"
@@ -298,13 +303,11 @@
       />
       |
       <label for="toggle-mask" style="color: white">Show Mask</label>
-      <input type="checkbox" id="toggle-mask"  />
+      <input type="checkbox" id="toggle-mask" checked />
       <br />
-
       <button id="video1">Video 1</button>
       <button id="video2">Video 2</button>
       |
-
       <button id="video-sequence">Video Sequence</button>
       |
       <input
@@ -317,57 +320,77 @@
       |
       <label for="mask-color" style="color: white">Mask Color</label>
       <input type="color" id="mask-color" value="#ffff00" />
-    </span>
-  </header>
-  <body></body>
+    </div>
+  </body>
   <style>
     body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
       background: black;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
       background: black;
       color: white;
-      padding: 10px 0;
-      position: fixed;
-      width: 100%;
-      bottom: 10px;
-      left: 10px;
-      opacity: 0;
+      padding: 10px;
+      z-index: 100;
     }
-
-    header:hover {
-      opacity: 1;
-    }
-
     header a {
       margin: 0 10px;
       color: white;
       text-decoration: none;
     }
-
-    button {
+    header input[type="text"] {
+      padding: 5px;
+      margin: 0 5px;
+      border: none;
+      border-radius: 3px;
+    }
+    header button {
       background-color: white;
       border: none;
       padding: 5px 10px;
       margin: 5px;
       cursor: pointer;
     }
-
-    button:hover {
+    header button:hover {
       background-color: gray;
     }
 
-    input[type="text"],
-    input[type="color"] {
+    #controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: black;
+      color: white;
+      padding: 10px;
+      z-index: 100;
+    }
+    #controls input[type="range"] {
+      vertical-align: middle;
+    }
+    #controls input[type="color"] {
       padding: 5px;
-      margin: 5px;
+      margin: 0 5px;
       border: none;
       border-radius: 3px;
+    }
+    #controls button {
+      background-color: white;
+      border: none;
+      padding: 5px 10px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    #controls button:hover {
+      background-color: gray;
     }
   </style>
 </html>
