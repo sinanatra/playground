@@ -173,13 +173,53 @@
         maskG.noStroke();
         maskG.ellipse(videoWidth / 2, videoHeight / 2, videoWidth, videoHeight);
 
+        // if (video) {
+        //   const maskedVideo = video.get();
+        //   maskedVideo.mask(maskG);
+
+        //   const videoX = videoPosX - videoWidth / 2;
+        //   const videoY = videoPosY - videoHeight / 2;
+        //   image(maskedVideo, videoX, videoY, videoWidth, videoHeight);
+        // }
         if (video) {
-          const maskedVideo = video.get();
-          maskedVideo.mask(maskG);
+          let rawFrame = video.get();
+
+          let imgW = rawFrame.width;
+          let imgH = rawFrame.height;
+          let containerAspect = videoWidth / videoHeight;
+          let sourceAspect = imgW / imgH;
+          let sx, sy, sWidth, sHeight;
+          if (sourceAspect > containerAspect) {
+            sHeight = imgH;
+            sWidth = imgH * containerAspect;
+            sx = (imgW - sWidth) / 2;
+            sy = 0;
+          } else {
+            sWidth = imgW;
+            sHeight = imgW / containerAspect;
+            sx = 0;
+            sy = (imgH - sHeight) / 2;
+          }
+
+          let croppedFrame = rawFrame.get(sx, sy, sWidth, sHeight);
+          croppedFrame.resize(videoWidth, videoHeight);
+
+          const maskG = createGraphics(videoWidth, videoHeight);
+          maskG.clear();
+          maskG.fill(255);
+          maskG.noStroke();
+          maskG.ellipse(
+            videoWidth / 2,
+            videoHeight / 2,
+            videoWidth,
+            videoHeight
+          );
+
+          croppedFrame.mask(maskG);
 
           const videoX = videoPosX - videoWidth / 2;
           const videoY = videoPosY - videoHeight / 2;
-          image(maskedVideo, videoX, videoY, videoWidth, videoHeight);
+          image(croppedFrame, videoX, videoY, videoWidth, videoHeight);
         }
 
         if (showMask) {
@@ -343,7 +383,7 @@
       opacity: 0;
     }
     header:hover {
-        opacity: 1;
+      opacity: 1;
     }
     header a {
       margin: 0 10px;
@@ -379,8 +419,8 @@
       opacity: 0;
     }
 
-    #controls:hover{
-        opacity: 1;
+    #controls:hover {
+      opacity: 1;
     }
 
     #controls input[type="range"] {
