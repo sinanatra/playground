@@ -195,7 +195,7 @@
           drawWrappedText(
             textValue,
             width / 2,
-            height / 2.8,
+            height / 2,
             textWrapWidth,
             textFontSize
           );
@@ -230,7 +230,7 @@
         while (lo <= hi) {
           let mid = floor((lo + hi) / 2);
           let h = measureBlockHeight(s, mid, textWrapWidth);
-          if (h <= height * 0.3) {
+          if (h <= height * 0.2) {
             best = mid;
             lo = mid + 1;
           } else {

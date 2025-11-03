@@ -10,8 +10,8 @@
       let mic, fft;
       let drift = 0;
       let seed = 0;
-      let grid = 100;
-      let variance = 12.0;
+      let grid = 200;
+      let variance = 1000;
       function setup() {
         pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
@@ -33,9 +33,10 @@
         const h = fft.getEnergy("treble") / 255;
         drift += 0.004 + 0.016 * h;
         seed += 0.001 + 0.004 * m;
-        if (frameCount % 240 === 0) grid = random([50, 100, 200]);
-        if (frameCount % 40 === 0)
-          variance = random([1, 3, 5, 10, 20, 50, 100, 200]);
+        if (frameCount % 240 === 0) grid = random(80, 250);
+        if (frameCount % 60 === 0) variance = random(100, 3000);
+
+        // if (frameCount % 60 === 0) variance = random([100, 500, 1000, 2000]);
 
         const cw = width / grid;
         const ch = height / grid;
