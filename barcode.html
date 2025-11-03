@@ -1,171 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> `.-':_,^=;+!r </title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
     <script>
-        let gridX = 200;
-        let gridY = 2;
-        let speeds = [];
-        let rowNoises = [];
-        let mic, fft;
+      let gridX = 200;
+      let gridY = 2;
+      let speeds = [];
+      let rowNoises = [];
+      let mic, fft;
 
-        let kickThreshold = 150;
-        let snareThreshold = 120;
-        const offset = 500;
-        let lastPeakTime = 0;
+      let kickThreshold = 150;
+      let snareThreshold = 120;
+      const offset = 500;
+      let lastPeakTime = 0;
 
-        function setup() {
-            pixelDensity(1);
-            createCanvas(windowWidth, windowHeight);
-            noStroke();
-            rectMode(CORNER);
-            frameRate(20);
+      function setup() {
+        pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        noStroke();
+        rectMode(CORNER);
+        frameRate(20);
 
-            userStartAudio();
-            mic = new p5.AudioIn();
-            mic.start();
-            fft = new p5.FFT(0.6, 256);
-            fft.setInput(mic);
-            updateSpeeds();
-            updateRowNoises();
+        userStartAudio();
+        mic = new p5.AudioIn();
+        mic.start();
+        fft = new p5.FFT(0.6, 256);
+        fft.setInput(mic);
+        updateSpeeds();
+        updateRowNoises();
+      }
+
+      function draw() {
+        background(0);
+
+        let spectrum = fft.analyze();
+        let kickEnergy = fft.getEnergy(20, 100); // Low frequencies for kicks
+        let snareEnergy = fft.getEnergy(250, 2000); // Mid frequencies for snares
+
+        // Kick Detection
+        if (
+          (kickEnergy > kickThreshold && millis() - lastPeakTime > offset) ||
+          (snareEnergy > snareThreshold && millis() - lastPeakTime > offset)
+        ) {
+          gridY = floor(random([2, 3, 4, 5, 10]));
+          gridX = floor(random([200, 300, 400, 500, 650, 700]));
+          updateSpeeds();
+          updateRowNoises();
+          lastPeakTime = millis();
         }
 
-        function draw() {
-            background(0);
+        let dynamicRows = gridY;
+        const tileWidth = width / gridX;
+        const tileHeight = height / gridY;
 
-            let spectrum = fft.analyze();
-            let kickEnergy = fft.getEnergy(20, 100); // Low frequencies for kicks
-            let snareEnergy = fft.getEnergy(250, 2000); // Mid frequencies for snares
+        const time = millis() * 0.001;
 
-            // Kick Detection
-            if (kickEnergy > kickThreshold && millis() - lastPeakTime > offset || snareEnergy > snareThreshold && millis() - lastPeakTime > offset) {
-                gridY = floor(random([2, 3, 4, 5, 10]));
-                gridX = floor(random([200, 300, 400, 500, 650, 700]));
-                updateSpeeds();
-                updateRowNoises();
-                lastPeakTime = millis();
-            }
+        for (let y = 0; y < dynamicRows; y++) {
+          const velocity = speeds[y] * 0.05;
+          const stepNoise = rowNoises[y % rowNoises.length];
 
+          for (let x = 0; x < gridX; x++) {
+            const px = x * tileWidth;
+            const py = y * tileHeight;
 
-            let dynamicRows = gridY;
-            const tileWidth = width / gridX;
-            const tileHeight = height / gridY;
+            const randVal = pattern(x, y, time, velocity, stepNoise);
+            const brightness = map(randVal, 0, 1, 0, 255);
+            const rectHeight = map(randVal, 0, 1, tileHeight * 0.1, tileHeight);
 
-            const time = millis() * 0.001;
-
-            for (let y = 0; y < dynamicRows; y++) {
-                const velocity = speeds[y] * 0.05;
-                const stepNoise = rowNoises[y % rowNoises.length];
-
-                for (let x = 0; x < gridX; x++) {
-                    const px = x * tileWidth;
-                    const py = y * tileHeight;
-
-                    const randVal = pattern(x, y, time, velocity, stepNoise);
-                    const brightness = map(randVal, 0, 1, 0, 255);
-                    const rectHeight = map(randVal, 0, 1, tileHeight * 0.1, tileHeight);
-
-                    fill(brightness);
-                    stroke(0);
-                    rect(px, py, tileWidth, rectHeight);
-                }
-            }
+            fill(brightness);
+            stroke(0);
+            rect(px, py, tileWidth, rectHeight);
+          }
         }
+      }
 
-        function updateSpeeds() {
-            speeds = [];
-            for (let i = 0; i < gridY; i++) {
-                speeds.push(random(-2, 2));
-            }
+      function updateSpeeds() {
+        speeds = [];
+        for (let i = 0; i < gridY; i++) {
+          speeds.push(random(-2, 2));
         }
+      }
 
-        function updateRowNoises() {
-            rowNoises = [];
-            for (let i = 0; i < gridY; i++) {
-                rowNoises.push(random(0.1, 0.9));
-            }
+      function updateRowNoises() {
+        rowNoises = [];
+        for (let i = 0; i < gridY; i++) {
+          rowNoises.push(random(0.1, 0.9));
         }
+      }
 
-        function random2D(st) {
-            return fract(sin(st.x * 12.9898 + st.y * 78.233) * 43758.5453123);
-        }
+      function random2D(st) {
+        return fract(sin(st.x * 12.9898 + st.y * 78.233) * 43758.5453123);
+      }
 
-        function pattern(x, y, time, velocity, stepNoise) {
-            const st = createVector(x, y);
-            const vel = createVector(-time * max(gridX, gridY) * velocity, 0);
-            const offset = createVector(0.5, 0);
+      function pattern(x, y, time, velocity, stepNoise) {
+        const st = createVector(x, y);
+        const vel = createVector(-time * max(gridX, gridY) * velocity, 0);
+        const offset = createVector(0.5, 0);
 
-            const gridPos = createVector(floor(st.x + vel.x), floor(st.y + vel.y));
-            return step(stepNoise, random2D(gridPos));
-        }
+        const gridPos = createVector(floor(st.x + vel.x), floor(st.y + vel.y));
+        return step(stepNoise, random2D(gridPos));
+      }
 
-        function step(edge, value) {
-            return value < edge ? 0.0 : 1.0;
-        }
+      function step(edge, value) {
+        return value < edge ? 0.0 : 1.0;
+      }
 
-        function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
-        }
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("threshold-slider").addEventListener("input", (event) => {
-                kickThreshold = parseInt(event.target.value, 10);
-                document.getElementById("threshold-value").textContent = kickThreshold;
-            });
-        });
-
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("threshold-slider")
+          .addEventListener("input", (event) => {
+            kickThreshold = parseInt(event.target.value, 10);
+            document.getElementById("threshold-value").textContent =
+              kickThreshold;
+          });
+      });
     </script>
-</head>
+  </head>
 
-<header>
-    <a href="datamosh.html">Datamosh</a>
-    <a href="barcode.html">Barcode</a>
-    <a href="blob.html">Detection</a>
-    <a href="vol.html">Volume</a>
-    <a href="ascii.html">Ascii</a>
-    <a href="thresh.html">Thresh</a>
+  <header>
     <span id="controls">
-        |
-        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">200</span></label>
-        <input type="range" id="threshold-slider" min="10" max="5000" step="1" value="200" />
+      |
+      <label for="threshold-slider" style="color: white"
+        >Threshold: <span id="threshold-value">200</span></label
+      >
+      <input
+        type="range"
+        id="threshold-slider"
+        min="10"
+        max="5000"
+        step="1"
+        value="200"
+      />
     </span>
-</header>
+  </header>
 
-<body></body>
+  <body></body>
 
-
-<style>
+  <style>
     body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
-   
     header {
-        background: black;
-        color: white;
-        padding: 10px 0;
-        position: absolute;
-        width: 100%;
-        opacity: 0;
+      background: black;
+      color: white;
+      padding: 10px 0;
+      position: absolute;
+      width: 100%;
+      opacity: 0;
     }
 
     header:hover {
-        opacity: 1;
+      opacity: 1;
     }
 
     header a {
-        margin: 0 10px;
-        color: white;
-        text-decoration: none;
+      margin: 0 10px;
+      color: white;
+      text-decoration: none;
     }
-</style>
-
+  </style>
 </html>

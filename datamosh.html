@@ -1,286 +1,433 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> `.-':_,^=;+!r </title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
     <script>
-        let mic, fft, vid;
-        let videoUrls = ["kyo_1.mp4","kyo_2.mp4","kyo_3.mp4", "kyo_4.mp4"];
-        videoUrls = shuffleArray(videoUrls);
+      let mic, fft, vid;
+      let videoUrls = [
+        "media/video_1.mp4",
+        "media/video_2.mp4",
+        "media/video_3.mp4",
+        "media/video_4.mp4",
+        "media/video_5.mp4",
+      ];
+      videoUrls = shuffleArray(videoUrls);
+      let currentVideoIndex = 0;
+      let switchInterval = 180000;
+      let lastSwitchTime = 0;
+      let lastPeakTime = 0;
+      let threshold = 50;
+      let encoder, decoder;
+      let isWebCodecsReady = false;
+      let ctx;
+      let videoCanvas, videoCtx;
+      let datamoshRepeats = 3;
+      let isVideoSwitching = false;
+      let isFrameReady = false;
+      let audioReactive = false;
 
-        let currentVideoIndex = 0;
-        let switchInterval = 180 * 1000;
+      let texts = [
+        "我用自己的血写下真理",
+        "哪怕纸张拒绝，我的心仍要呐喊",
+        "自由属于敢于说出的人",
+        "铁窗不能封住风",
+        "信念不会死去，它在每一滴血里重生",
+        "真理的力量",
+        "决不在于",
+        "维护真理者",
+        "姿态的傲慢",
 
-        let lastSwitchTime = 0;
-        let lastPeakTime = 0;
+        "The power of truth",
+        "never lies in",
+        "the arrogant air",
+        "of the guardians of truth",
 
-        let randHue = 360;
-        let threshold = 150;
+        // "As you prepare your breakfast, think of others",
+        // "As you conduct your wars, think of others",
+        // "As you pay your water bill, think of others",
+        // "As you return home, to your home, think of others",
+        // "As you sleep and count the stars, think of others",
+        // "As you liberate yourself in metaphor, think of others",
+        // "As you think of others far away, think of yourself",
 
-        let encoder, decoder;
-        let isWebCodecsReady = false;
-        let ctx;
+        "وأنتَ تعدّ فطورك، فكّر بغيرك",
+        "وأنتَ تخوض حروبك، فكّر بغيرك",
+        "وأنتَ تسدّد فاتورة الماء، فكّر بغيرك",
+        "وأنتَ تعود إلى البيت، بيتك، فكّر بغيرك",
+        "وأنت تنام وتحصي الكواكب، فكّر بغيرك",
+        "وأنت تحرّر نفسك بالاستعارات، فكّر بغيرك",
+        "وأنت تفكّر بالآخرين البعيدين، فكّر بنفسك",
+      ];
 
-        let datamoshRepeats = 3;
-        let isVideoSwitching = false;
-        let isFrameReady = false;
+      let showText = false;
+      let textValue = "";
+      let textStart = 0;
+      let textDuration = 0;
+      let nextTextAt = 0;
+      let textWrapWidth = 0;
+      let textFontSize = 5;
 
-        async function setup() {
-            colorMode(HSL, 360, 100, 100);
-            createCanvas(windowWidth, windowHeight);
+      async function setup() {
+        colorMode(HSL, 360, 100, 100);
+        createCanvas(windowWidth, windowHeight);
+        ctx = canvas.getContext("2d");
+        frameRate(30);
+        textFont("Helvetica, sans-serif");
+        textAlign(CENTER, CENTER);
+        nextTextAt = millis() + random(1000, 4000);
+        await loadVideo();
+      }
 
-            userStartAudio();
-            ctx = canvas.getContext("2d");
-            frameRate(30);
+      function mousePressed() {
+        switchVideo();
+        if (audioReactive && (!mic || !fft)) enableAudioReactive();
+      }
 
-            mic = new p5.AudioIn();
-            await mic.start();
-            fft = new p5.FFT(0.6, 256);
-            fft.setInput(mic);
+      function switchVideo() {
+        currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
+        loadVideo();
+        lastSwitchTime = millis();
+      }
 
-            await loadVideo();
-        }
+      async function enableAudioReactive() {
+        await userStartAudio();
+        mic = new p5.AudioIn();
+        await mic.start();
+        fft = new p5.FFT(0.6, 256);
+        fft.setInput(mic);
+      }
 
-        function mousePressed() {
-            switchVideo();
-            initializeAudioAndVideo();
-        }
+      function disableAudioReactive() {
+        if (mic && mic.enabled) mic.stop();
+        mic = null;
+        fft = null;
+      }
 
-        function switchVideo() {
-            currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
-            loadVideo();
-            lastSwitchTime = millis();
-        }
-
-        async function initializeAudioAndVideo() {
-            mic = new p5.AudioIn();
-            await mic.start();
-            fft = new p5.FFT(0.6, 256);
-            fft.setInput(mic);
-
-            await loadVideo();
-        }
-
-        async function loadVideo() {
-            if (vid) {
-                vid.remove();
-            }
-
-            isVideoSwitching = true;
-            isFrameReady = false;
-
-            vid = createVideo(videoUrls[currentVideoIndex]);
-            vid.size(windowWidth, windowHeight);
-            vid.volume(0);
-            vid.loop();
-            vid.hide();
-
-            vid.elt.onloadedmetadata = () => {
-                let randomStartTime = random(0, vid.duration());
-                vid.time(randomStartTime);
-                console.log(`Switched to video ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`);
-            };
-
-            vid.elt.onloadeddata = async () => {
-                const isSupported = await checkCodecSupport();
-                if (isSupported) {
-                    setupWebCodecs(ctx);
-                    vid.elt.play().then(() => {
-                        isWebCodecsReady = true;
-                        isVideoSwitching = false;
-                        isFrameReady = true;
-                    }).catch((error) => {
-                        console.error("Error playing video: ", error);
-                    });
-                } else {
-                    console.error("Codec not supported");
-                    isVideoSwitching = false;
-                }
-            };
-
-            vid.elt.onerror = () => {
-                console.error("Error loading video file");
+      async function loadVideo() {
+        if (vid) vid.remove();
+        isVideoSwitching = true;
+        isFrameReady = false;
+        vid = createVideo(videoUrls[currentVideoIndex]);
+        vid.size(windowWidth, windowHeight);
+        vid.volume(0);
+        vid.loop();
+        vid.hide();
+        vid.elt.onloadedmetadata = () => {
+          let randomStartTime = random(0, vid.duration());
+          vid.time(randomStartTime);
+        };
+        vid.elt.onloadeddata = async () => {
+          const isSupported = await checkCodecSupport();
+          if (isSupported) {
+            setupWebCodecs();
+            vid.elt
+              .play()
+              .then(() => {
+                isWebCodecsReady = true;
                 isVideoSwitching = false;
-            };
-        }
+                isFrameReady = true;
+              })
+              .catch(() => {});
+          } else {
+            isVideoSwitching = false;
+          }
+        };
+        vid.elt.onerror = () => {
+          isVideoSwitching = false;
+        };
+      }
 
-        function draw() {
-            if (!isWebCodecsReady || isVideoSwitching || !isFrameReady) return;
+      function draw() {
+        if (!isWebCodecsReady || isVideoSwitching || !isFrameReady) return;
 
-            let spectrum = fft.analyze();
-            let peak = Math.max(...spectrum);
-            let peakIndex = spectrum.indexOf(peak);
-
-            let bassEnergy = fft.getEnergy("bass");
-            let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
-            let speed = constrain(map(bpm, 60, 180, 0.1, 5), 1, 3);
-            let offset = 2000;
-
-            vid.speed(speed);
-
-            if (peak > threshold && millis() - lastPeakTime > offset) {
-                let direction = int(map(peakIndex, 0, 255, 1, 2));
-
-                if (peakIndex == 0) {
-                    datamoshRepeats = 3;
-                }
-                if (peakIndex > 0 && peakIndex <= 2) {
-                    datamoshRepeats = int(random(1, 2));
-                }
-                if (peakIndex > 2 && peakIndex < 5) {
-                    datamoshRepeats = int(random(1, 4));
-                    direction = -direction;
-                }
-                if (peakIndex >= 10) {
-                    datamoshRepeats = int(random(2, 6));
-                } else {
-                    datamoshRepeats = 2;
-                }
-                // vid.time(vid.time() + direction);
-                lastPeakTime = millis();
+        if (audioReactive && fft) {
+          let spectrum = fft.analyze();
+          let peak = Math.max(...spectrum);
+          let peakIndex = spectrum.indexOf(peak);
+          let bassEnergy = fft.getEnergy("bass");
+          let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
+          let speed = constrain(map(bpm, 60, 180, 0.1, 5), 1, 3);
+          let offset = 2000;
+          vid.speed(1);
+          if (peak > threshold && millis() - lastPeakTime > offset) {
+            let direction = int(map(peakIndex, 0, 255, 1, 2));
+            if (peakIndex == 0) datamoshRepeats = 3;
+            if (peakIndex > 0 && peakIndex <= 2)
+              datamoshRepeats = int(random(2, 3));
+            if (peakIndex > 2 && peakIndex < 5) {
+              datamoshRepeats = int(random(2, 4));
+              direction = -direction;
             }
-
-            if (frameCount % 120 === 0) {
-                datamoshRepeats = 1;
-            }
-
-            if (vid.elt.readyState === 4 && !vid.elt.paused && encoder && encoder.state === "configured") {
-                try {
-                    const frame = new VideoFrame(vid.elt);
-                    encoder.encode(frame, { keyFrame: false });
-                    frame.close();
-                } catch (e) {
-                    console.error(`VideoFrame error: ${e.message}`);
-                }
-            }
+            if (peakIndex >= 10) datamoshRepeats = int(random(2, 6));
+            else datamoshRepeats = 2;
+            lastPeakTime = millis();
+          }
+        } else {
+          if (millis() - lastPeakTime > random(3000, 8000)) {
+            datamoshRepeats = int(random(2, 4));
+            if (random() < 0.3) datamoshRepeats += int(random(3, 5));
+            lastPeakTime = millis();
+          }
+          vid.speed(1);
         }
 
-        async function checkCodecSupport() {
-            const config = {
-                type: "file",
-                video: {
-                    contentType: 'video/webm; codecs="vp8"',
-                    width: windowWidth,
-                    height: windowHeight,
-                    bitrate: 500000,
-                    framerate: 30
-                },
-            };
-            const mediaCapabilities = await navigator.mediaCapabilities.decodingInfo(config);
-            return mediaCapabilities.supported;
+        if (millis() > nextTextAt && !showText) {
+          textValue = texts[int(random(texts.length))];
+          textDuration = random(1200, 4000);
+          textStart = millis();
+          showText = true;
+          datamoshRepeats = int(random(3, 7));
+          computeTextLayout(textValue);
         }
 
-        function setupWebCodecs(ctx) {
-            encoder = new VideoEncoder({
-                output: handleEncodedChunk,
-                error: (err) => console.error("Encoder error:", err),
-            });
-
-            encoder.configure({
-                codec: "vp8",
-                width: windowWidth,
-                height: windowHeight,
-            });
-
-            decoder = new VideoDecoder({
-                output: (frame) => handleDecodedFrame(frame, ctx),
-                error: (err) => console.error("Decoder error:", err),
-            });
-
-            decoder.configure({
-                codec: "vp8",
-            });
+        if (videoCanvas) {
+          ctx.globalAlpha = 1;
+          ctx.drawImage(videoCanvas, 0, 0, windowWidth, windowHeight);
         }
 
-        function handleEncodedChunk(chunk) {
-            if (decoder && decoder.state === "configured") {
-                for (let i = 0; i < datamoshRepeats; i++) {
-                    decoder.decode(chunk);
-                }
-            }
+        if (showText) {
+          fill("#0DF610");
+          let t = millis() - textStart;
+          drawWrappedText(
+            textValue,
+            width / 2,
+            height / 2.8,
+            textWrapWidth,
+            textFontSize
+          );
+
+          if (t >= textDuration) {
+            showText = false;
+            nextTextAt = millis() + random(6000, 16000);
+          }
         }
 
-        function handleDecodedFrame(frame, ctx) {
-            ctx.clearRect(0, 0, windowWidth, windowHeight);
-            ctx.save();
-            ctx.translate(windowWidth, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(frame, 0, 0, windowWidth, windowHeight);
-            ctx.restore();
+        if (frameCount % 120 === 0) datamoshRepeats = 1;
+
+        if (
+          vid.elt.readyState === 4 &&
+          !vid.elt.paused &&
+          encoder &&
+          encoder.state === "configured"
+        ) {
+          try {
+            const frame = new VideoFrame(vid.elt);
+            encoder.encode(frame, { keyFrame: false });
             frame.close();
+          } catch (e) {}
         }
+      }
 
-        function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
-            if (vid) {
-                vid.size(windowWidth, windowHeight);
-            }
+      function computeTextLayout(s) {
+        textWrapWidth = width * 0.9;
+        let lo = 10;
+        let hi = min(width, height);
+        let best = 5;
+        while (lo <= hi) {
+          let mid = floor((lo + hi) / 2);
+          let h = measureBlockHeight(s, mid, textWrapWidth);
+          if (h <= height * 0.4) {
+            best = mid;
+            lo = mid + 1;
+          } else {
+            hi = mid - 1;
+          }
         }
+        textFontSize = best;
+      }
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
+      function drawWrappedText(s, cx, cy, maxW, size) {
+        let lines = wrapLines(s, size, maxW);
+        let totalH = lines.length * size * 1.1;
+        let y = cy - totalH / 2 + size * 0.85;
+        textSize(size);
+        for (let i = 0; i < lines.length; i++) {
+          text(lines[i], cx, y + i * size * 1.1);
         }
+      }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("threshold-slider").addEventListener("input", (event) => {
-                threshold = parseInt(event.target.value, 10);
-                document.getElementById("threshold-value").textContent = threshold;
-            });
+      function measureBlockHeight(s, size, maxW) {
+        let lines = wrapLines(s, size, maxW);
+        return lines.length * size * 1.1;
+      }
+
+      function wrapLines(s, size, maxW) {
+        textSize(size);
+        let words = s.split(/\s+/);
+        let lines = [];
+        let line = "";
+        for (let i = 0; i < words.length; i++) {
+          let test = line.length ? line + " " + words[i] : words[i];
+          if (textWidth(test) <= maxW) {
+            line = test;
+          } else {
+            if (line.length) lines.push(line);
+            line = words[i];
+          }
+        }
+        if (line.length) lines.push(line);
+        return lines;
+      }
+
+      async function checkCodecSupport() {
+        const config = {
+          type: "file",
+          video: {
+            contentType: 'video/webm; codecs="vp8"',
+            width: windowWidth,
+            height: windowHeight,
+            bitrate: 500000,
+            framerate: 30,
+          },
+        };
+        const mediaCapabilities =
+          await navigator.mediaCapabilities.decodingInfo(config);
+        return mediaCapabilities.supported;
+      }
+
+      function setupWebCodecs() {
+        videoCanvas = document.createElement("canvas");
+        videoCanvas.width = windowWidth;
+        videoCanvas.height = windowHeight;
+        videoCtx = videoCanvas.getContext("2d");
+        encoder = new VideoEncoder({
+          output: handleEncodedChunk,
+          error: () => {},
         });
+        encoder.configure({
+          codec: "vp8",
+          width: windowWidth,
+          height: windowHeight,
+        });
+        decoder = new VideoDecoder({
+          output: (f) => handleDecodedFrame(f),
+          error: () => {},
+        });
+        decoder.configure({ codec: "vp8" });
+      }
+
+      function handleEncodedChunk(chunk) {
+        if (decoder && decoder.state === "configured") {
+          for (let i = 0; i < datamoshRepeats; i++) decoder.decode(chunk);
+        }
+      }
+
+      function handleDecodedFrame(frame) {
+        if (!videoCtx) {
+          frame.close();
+          return;
+        }
+        videoCtx.globalAlpha = 1;
+        videoCtx.setTransform(1, 0, 0, 1, 0, 0);
+        videoCtx.clearRect(0, 0, windowWidth, windowHeight);
+        videoCtx.save();
+        videoCtx.translate(windowWidth, 0);
+        videoCtx.scale(-1, 1);
+        videoCtx.drawImage(frame, 0, 0, windowWidth, windowHeight);
+        videoCtx.restore();
+        frame.close();
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        if (vid) vid.size(windowWidth, windowHeight);
+        if (videoCanvas) {
+          videoCanvas.width = windowWidth;
+          videoCanvas.height = windowHeight;
+        }
+        if (showText) computeTextLayout(textValue);
+      }
+
+      function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("threshold-slider")
+          .addEventListener("input", (e) => {
+            threshold = parseInt(e.target.value, 10);
+            document.getElementById("threshold-value").textContent = threshold;
+          });
+        const toggle = document.getElementById("audio-toggle");
+        const label = document.getElementById("audio-label");
+        toggle.checked = false;
+        label.textContent = "Audio reactive: off";
+        toggle.addEventListener("change", async (e) => {
+          audioReactive = e.target.checked;
+          label.textContent = audioReactive
+            ? "Audio reactive: on"
+            : "Audio reactive: off";
+          if (audioReactive) await enableAudioReactive();
+          else disableAudioReactive();
+        });
+      });
     </script>
-</head>
+  </head>
 
-<header>
-    <a href="datamosh.html">Datamosh</a>
-    <a href="barcode.html">Barcode</a>
-    <a href="blob.html">Detection</a>
-    <a href="vol.html">Volume</a>
-    <a href="ascii.html">Ascii</a>
-    <a href="thresh.html">Thresh</a>
+  <header>
     <span id="controls">
-        |
-        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">150</span></label>
-        <input type="range" id="threshold-slider" min="10" max="2000" step="1" value="150" />
+      <label id="audio-label" for="audio-toggle" style="color: white"></label>
+      <input type="checkbox" id="audio-toggle" />
+      <label for="threshold-slider" style="color: white"
+        >Threshold: <span id="threshold-value">50</span></label
+      >
+      <input
+        type="range"
+        id="threshold-slider"
+        min="10"
+        max="2000"
+        step="1"
+        value="150"
+      />
     </span>
-</header>
+  </header>
 
-<body>
-</body>
+  <body></body>
 
-<style>
+  <style>
     body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
     }
-
     header {
-        background: black;
-        color: white;
-        padding: 10px 0;
-        position: absolute;
-        width: 100%;
-        opacity: 0;
+      background: black;
+      color: white;
+      padding: 10px 0;
+      position: absolute;
+      width: 100%;
+      opacity: 0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      z-index: 10;
     }
-
     header:hover {
-        opacity: 1;
+      opacity: 1;
     }
-
     header a {
-        margin: 0 10px;
-        color: white;
-        text-decoration: none;
+      margin: 0 10px;
+      color: white;
+      text-decoration: none;
     }
-</style>
-
+    #controls {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+      padding-left: 10px;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
 </html>

@@ -1,299 +1,325 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> `.-':_,^=;+!r </title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
     <script src="p5.vida.min.js"></script>
     <script>
-        let vid;
-        let myVida;
-        let mic, fft;
-        let threshold = 0.004;
-        let lastPeakTime = 0;
-        const offset = 500;
-        let displayMode = 0;
-        let isGray = 0;
-        let bg = 0;
-        let videoChangeInterval = 60000 * 5;
-        let videoUrls = ['video_1.mp4', 'video_3.mp4', 'video_4.mp4', 'kyo_2.mp4', 'kyo_3.mp4', 'kyo_4.mp4'];
-        let currentVideoIndex = 0;
+      let vid;
+      let myVida;
+      let mic, fft;
+      let threshold = 0.004;
+      let lastPeakTime = 0;
+      const offset = 500;
+      let displayMode = 0;
+      let isGray = 0;
+      let bg = 0;
+      let videoChangeInterval = 60000 * 5;
+      let videoUrls = [
+        "media/video_1.mp4",
+        "media/video_2.mp4",
+        "media/video_3.mp4",
+        "media/video_4.mp4",
+        "media/video_5.mp4",
+      ];
+      let currentVideoIndex = 0;
 
-        let color = [255, 255, 255];
-        let previousval = 0;
-        let toggleReactivity = true;
+      let color = [255, 255, 255];
+      let previousval = 0;
+      let toggleReactivity = true;
 
-        async function setup() {
-            // pixelDensity(1);
-            createCanvas(windowWidth, windowHeight);
-            textAlign(LEFT, LEFT);
+      async function setup() {
+        // pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        textAlign(LEFT, LEFT);
 
-            userStartAudio();
-            mic = new p5.AudioIn();
-            mic.start();
-            fft = new p5.FFT(0.6, 256);
-            fft.setInput(mic);
-            peakDetect = new p5.PeakDetect();
+        userStartAudio();
+        mic = new p5.AudioIn();
+        mic.start();
+        fft = new p5.FFT(0.6, 256);
+        fft.setInput(mic);
+        peakDetect = new p5.PeakDetect();
 
-            currentVideoIndex = floor(random(0, videoUrls.length));
-            await loadVideo();
+        currentVideoIndex = floor(random(0, videoUrls.length));
+        await loadVideo();
 
-            myVida = new Vida(this);
-            myVida.progressiveBackgroundFlag = true;
-            myVida.imageFilterFeedback = 0.85;
-            myVida.imageFilterThreshold = 0.1;
-            myVida.handleBlobsFlag = true;
-            myVida.trackBlobsFlag = true;
-            myVida.approximateBlobPolygonsFlag = false;
-            myVida.normMinBlobMass = 0.0001;
+        myVida = new Vida(this);
+        myVida.progressiveBackgroundFlag = true;
+        myVida.imageFilterFeedback = 0.85;
+        myVida.imageFilterThreshold = 0.1;
+        myVida.handleBlobsFlag = true;
+        myVida.trackBlobsFlag = true;
+        myVida.approximateBlobPolygonsFlag = false;
+        myVida.normMinBlobMass = 0.0001;
 
-            frameRate(30);
-            background(0);
+        frameRate(30);
+        background(0);
 
-            setInterval(() => {
-                switchVideo();
-            }, videoChangeInterval);
+        setInterval(() => {
+          switchVideo();
+        }, videoChangeInterval);
+      }
+
+      async function loadVideo() {
+        if (vid) vid.pause();
+        if (vid) vid.remove();
+        vid = createVideo(videoUrls[currentVideoIndex]);
+        vid.size(320, 240);
+        vid.volume(0);
+        vid.loop();
+        vid.hide();
+
+        vid.elt.onloadedmetadata = () => {
+          let randomStartTime = random(0, vid.duration());
+          vid.time(randomStartTime);
+          console.log(
+            `Video loaded: ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`
+          );
+        };
+      }
+
+      function keyPressed() {
+        if (key === "1") {
+          toggleReactivity = !toggleReactivity;
+          console.log(`Audio Reactivity: ${toggleReactivity}`);
+        }
+      }
+
+      function draw() {
+        // background(0);
+
+        let spectrum = fft.analyze();
+        let wave = fft.waveform();
+
+        let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100);
+
+        if (vid && vid.elt.readyState >= 2) {
+          myVida.update(vid);
+          image(vid, 0, 0, width, height);
+
+          blendMode(MULTIPLY);
+          fill(0, 95);
+          rect(0, 0, width, height);
+          blendMode(BLEND);
+
+          fft.analyze();
+          let waveSum = 0;
+          for (let i = 0; i < wave.length; i++) {
+            waveSum += abs(wave[i]);
+          }
+          let averageWaveEnergy = waveSum / wave.length;
+
+          if (
+            (previousval !== averageWaveEnergy &&
+              averageWaveEnergy > threshold &&
+              millis() - lastPeakTime > offset) ||
+            (toggleReactivity && millis() - lastPeakTime > offset)
+          ) {
+            displayMode = random(int([1, 2, 3, 4]));
+            // displayMode = (displayMode + 1) % 5;
+
+            lastPeakTime = millis();
+
+            color = random([
+              [255, 255, 0], // Bright Yellow
+              [255, 0, 0], // Bright Red
+              [0, 255, 0], // Bright Green
+              [0, 0, 255], // Bright Blue
+              [255, 255, 255], // Pure White
+              [255, 128, 0], // Bright Orange
+              [0, 255, 255], // Bright Cyan
+              [255, 0, 255], // Bright Magenta
+              [128, 0, 255], // Flashy Purple
+              [255, 182, 193], // Light Pink
+              [240, 230, 140], // Khaki Yellow
+            ]);
+          }
+
+          if (previousval !== averageWaveEnergy || toggleReactivity) {
+            drawBlobs(wave);
+          }
+
+          previousval = averageWaveEnergy;
+        }
+      }
+
+      function drawBlobs() {
+        let blobs = myVida.getBlobs();
+        let points = [];
+
+        for (let i = 0; i < blobs.length; i++) {
+          let b = blobs[i];
+
+          let rectX = b.normRectX * width;
+          let rectY = b.normRectY * height;
+          let rectW = b.normRectW * width;
+          let rectH = b.normRectH * height;
+
+          let massX = b.normMassCenterX * width;
+          let massY = b.normMassCenterY * height;
+
+          points.push({ x: massX, y: massY });
+
+          switch (displayMode) {
+            case 0:
+              noFill();
+              stroke(...color);
+              fill(255, 255, 255, 30);
+              rect(rectX, rectY, rectW, rectH);
+              noStroke();
+              fill(...color);
+              textSize(8);
+              text(`ID: ${b.id}`, rectX, rectY - 10, rectW - 20);
+              break;
+            case 1:
+              noStroke();
+              fill(...color);
+              textSize(6);
+              text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY);
+              break;
+            case 2:
+              textAlign(CENTER, CENTER);
+              noStroke();
+              fill(...color);
+              ellipse(massX, massY, 5, 5);
+              textSize(6);
+              text(
+                `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
+                rectX,
+                rectY + 12
+              );
+              break;
+            case 3:
+              textAlign(CENTER, CENTER);
+              noStroke();
+              fill(...color);
+              ellipse(massX, massY, 5, 5);
+              textSize(6);
+              text(
+                `ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`,
+                rectX,
+                rectY + 12
+              );
+              break;
+            case 4:
+              noFill();
+              stroke(...color);
+              fill(255, 255, 255, 30);
+              rect(rectX, rectY, rectW, rectH);
+              line(rectX, rectY, rectX + rectW, rectY + rectH);
+              line(rectX + rectW, rectY, rectX, rectY + rectH);
+
+              noStroke();
+              fill(...color);
+              textSize(8);
+              text(`ID: ${b.id}`, rectX, rectY - 10, rectW - 20);
+          }
         }
 
-        async function loadVideo() {
-            if (vid) vid.pause();
-            if (vid) vid.remove();
-            vid = createVideo(videoUrls[currentVideoIndex]);
-            vid.size(320, 240);
-            vid.volume(0);
-            vid.loop();
-            vid.hide();
+        if (displayMode === 2 && points.length <= 30) {
+          stroke(...color);
+          noFill();
 
-            vid.elt.onloadedmetadata = () => {
-                let randomStartTime = random(0, vid.duration());
-                vid.time(randomStartTime);
-                console.log(`Video loaded: ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`);
-            };
-        }
+          for (let i = 0; i < points.length / 3; i++) {
+            for (let j = i + 1; j < points.length; j++) {
+              let p1 = points[i];
+              let p2 = points[j];
+              let controlX1 = (p1.x + p2.x) / 2 + random(-250, 250);
+              let controlY1 = (p1.y + p2.y) / 2 + random(-250, 250);
 
-        function keyPressed() {
-            if (key === '1') {
-                toggleReactivity = !toggleReactivity;
-                console.log(`Audio Reactivity: ${toggleReactivity}`);
+              let controlX2 = (p1.x + p2.x) / 2 + random(-250, 250);
+              let controlY2 = (p1.y + p2.y) / 2 + random(-250, 250);
+
+              bezier(
+                p1.x,
+                p1.y,
+                controlX1,
+                controlY1,
+                controlX2,
+                controlY2,
+                p2.x,
+                p2.y
+              );
             }
+          }
         }
+      }
 
-        function draw() {
-            // background(0);
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
 
-            let spectrum = fft.analyze();
-            let wave = fft.waveform();
+      function switchVideo() {
+        currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
+        loadVideo();
+      }
 
-            let kickEnergy = constrain(fft.getEnergy(20, 100), 20, 100);
-
-            if (vid && vid.elt.readyState >= 2) {
-                myVida.update(vid);
-                image(vid, 0, 0, width, height);
-
-                blendMode(MULTIPLY);
-                fill(0, 95);
-                rect(0, 0, width, height);
-                blendMode(BLEND);
-
-                fft.analyze();
-                let waveSum = 0;
-                for (let i = 0; i < wave.length; i++) {
-                    waveSum += abs(wave[i]);
-                }
-                let averageWaveEnergy = waveSum / wave.length;
-
-
-                if (previousval !== averageWaveEnergy && averageWaveEnergy > threshold && millis() - lastPeakTime > offset || toggleReactivity && millis() - lastPeakTime > offset) {
-
-                    displayMode = random(int([1, 2, 3, 4]));
-                    // displayMode = (displayMode + 1) % 5;
-
-                    lastPeakTime = millis();
-
-                    color = random([
-                        [255, 255, 0],   // Bright Yellow
-                        [255, 0, 0],     // Bright Red
-                        [0, 255, 0],     // Bright Green
-                        [0, 0, 255],     // Bright Blue
-                        [255, 255, 255], // Pure White
-                        [255, 128, 0],   // Bright Orange
-                        [0, 255, 255],   // Bright Cyan
-                        [255, 0, 255],   // Bright Magenta
-                        [128, 0, 255],   // Flashy Purple
-                        [255, 182, 193], // Light Pink
-                        [240, 230, 140], // Khaki Yellow 
-                    ]);
-                }
-
-                if (previousval !== averageWaveEnergy || toggleReactivity) {
-                    drawBlobs(wave);
-                }
-
-                previousval = averageWaveEnergy;
-
-            }
+      function mousePressed() {
+        switchVideo();
+        if (vid) {
+          vid.play();
         }
+      }
 
-        function drawBlobs() {
-            let blobs = myVida.getBlobs();
-            let points = [];
-
-            for (let i = 0; i < blobs.length; i++) {
-                let b = blobs[i];
-
-                let rectX = b.normRectX * width;
-                let rectY = b.normRectY * height;
-                let rectW = b.normRectW * width;
-                let rectH = b.normRectH * height;
-
-                let massX = b.normMassCenterX * width;
-                let massY = b.normMassCenterY * height;
-
-                points.push({ x: massX, y: massY });
-
-                switch (displayMode) {
-                    case 0:
-                        noFill();
-                        stroke(...color);
-                        fill(255, 255, 255, 30);
-                        rect(rectX, rectY, rectW, rectH);
-                        noStroke();
-                        fill(...color);
-                        textSize(8);
-                        text(`ID: ${b.id}`, rectX, rectY - 10, rectW - 20);
-                        break;
-                    case 1:
-                        noStroke();
-                        fill(...color);
-                        textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY);
-                        break;
-                    case 2:
-                        textAlign(CENTER, CENTER);
-                        noStroke();
-                        fill(...color);
-                        ellipse(massX, massY, 5, 5);
-                        textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY + 12);
-                        break;
-                    case 3:
-                        textAlign(CENTER, CENTER);
-                        noStroke();
-                        fill(...color);
-                        ellipse(massX, massY, 5, 5);
-                        textSize(6);
-                        text(`ID: ${b.id} X:${int(rectX)} Y:${int(rectY)}`, rectX, rectY + 12);
-                        break;
-                    case 4:
-                        noFill();
-                        stroke(...color);
-                        fill(255, 255, 255, 30);
-                        rect(rectX, rectY, rectW, rectH);
-                        line(rectX, rectY, rectX + rectW, rectY + rectH);
-                        line(rectX + rectW, rectY, rectX, rectY + rectH);
-
-                        noStroke();
-                        fill(...color);
-                        textSize(8);
-                        text(`ID: ${b.id}`, rectX, rectY - 10, rectW - 20);
-
-                }
-            }
-
-            if (displayMode === 2 && points.length <= 30) {
-                stroke(...color);
-                noFill();
-
-                for (let i = 0; i < points.length / 3; i++) {
-                    for (let j = i + 1; j < points.length; j++) {
-                        let p1 = points[i];
-                        let p2 = points[j];
-                        let controlX1 = (p1.x + p2.x) / 2 + random(-250, 250);
-                        let controlY1 = (p1.y + p2.y) / 2 + random(-250, 250);
-
-                        let controlX2 = (p1.x + p2.x) / 2 + random(-250, 250);
-                        let controlY2 = (p1.y + p2.y) / 2 + random(-250, 250);
-
-                        bezier(p1.x, p1.y, controlX1, controlY1, controlX2, controlY2, p2.x, p2.y);
-                    }
-                }
-            }
-        }
-
-        function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
-        }
-
-        function switchVideo() {
-            currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
-            loadVideo();
-        }
-
-        function mousePressed() {
-            switchVideo();
-            if (vid) {
-                vid.play();
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("threshold-slider").addEventListener("input", (event) => {
-                threshold = event.target.value;
-                document.getElementById("threshold-value").textContent = threshold;
-            });
-        });
-
-
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("threshold-slider")
+          .addEventListener("input", (event) => {
+            threshold = event.target.value;
+            document.getElementById("threshold-value").textContent = threshold;
+          });
+      });
     </script>
-</head>
+  </head>
 
-<header>
-    <a href="datamosh.html">Datamosh</a>
-    <a href="barcode.html">Barcode</a>
-    <a href="blob.html">Detection</a>
-    <a href="vol.html">Volume</a>
-    <a href="ascii.html">Ascii</a>
-    <a href="thresh.html">Thresh</a>
+  <header>
     <span id="controls">
-        |
-        <label for="threshold-slider" style="color: white;">Threshold: <span id="threshold-value">0.004</span></label>
-        <input type="range" id="threshold-slider" min="0.001" max="0.1" step="0.001" value="0.004" />
+      |
+      <label for="threshold-slider" style="color: white"
+        >Threshold: <span id="threshold-value">0.004</span></label
+      >
+      <input
+        type="range"
+        id="threshold-slider"
+        min="0.001"
+        max="0.1"
+        step="0.001"
+        value="0.004"
+      />
     </span>
     <span> | Press 1 to toggle audio reactivity</span>
-</header>
+  </header>
 
-<body></body>
+  <body></body>
 
-<style>
+  <style>
     body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
-    
     header {
-        background: black;
-        color: white;
-        padding: 10px 0;
-        position: absolute;
-        width: 100%;
-        opacity: 0;
+      background: black;
+      color: white;
+      padding: 10px 0;
+      position: absolute;
+      width: 100%;
+      opacity: 0;
     }
 
     header:hover {
-        opacity: 1;
+      opacity: 1;
     }
 
     header a {
-        margin: 0 10px;
-        color: white;
-        text-decoration: none;
+      margin: 0 10px;
+      color: white;
+      text-decoration: none;
     }
-</style>
-
+  </style>
 </html>

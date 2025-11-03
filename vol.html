@@ -1,158 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> `.-':_,^=;+!r </title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
     <script>
-        let mic, fft;
-        let rowCount = 50;
-        let columnCount = 2;
-        let speeds = [];
-        let toggleRectWidth = false;
-        let baseHue = 0;
+      let mic, fft;
+      let rowCount = 50;
+      let columnCount = 2;
+      let speeds = [];
+      let toggleRectWidth = false;
+      let baseHue = 0;
 
-        function setup() {
-            colorMode(HSB, 255);
-            frameRate(30)
+      function setup() {
+        colorMode(HSB, 255);
+        frameRate(30);
 
-            pixelDensity(1);
-            createCanvas(windowWidth, windowHeight);
+        pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        noStroke();
+        rectMode(CENTER);
+
+        userStartAudio();
+        mic = new p5.AudioIn();
+        mic.start();
+        fft = new p5.FFT(0.6, 256);
+        fft.setInput(mic);
+
+        updateSpeeds();
+      }
+
+      function draw() {
+        background(0);
+
+        if (frameCount % 120 === 0) {
+          // columnCount = floor(random(2, 10));
+          columnCount = floor(random([2, 3, 4, 5, 10]));
+          if (toggleRectWidth) {
+            rowCount = floor(random([50, 100, 200, 300]));
+          } else {
+            rowCount = 50;
+          }
+
+          updateSpeeds();
+          toggleRectWidth = !toggleRectWidth;
+        }
+
+        let spectrum = fft.analyze();
+        let bassEnergy = fft.getEnergy("bass");
+
+        const bassThreshold = 30;
+        const activity =
+          bassEnergy > bassThreshold
+            ? map(bassEnergy, bassThreshold, 255, 0, 1)
+            : 0;
+
+        let columnWidth = width / columnCount;
+        let rowHeight = height / rowCount;
+
+        for (let x = 0; x < columnCount; x++) {
+          let columnSpeed = speeds[x];
+
+          for (let y = 0; y < rowCount; y++) {
+            let px = x * columnWidth + columnWidth / 2;
+            let py = y * rowHeight + rowHeight / 2;
+
+            let randVal = pseudoRandom(x, y, frameCount * columnSpeed);
+            let rectWidth = toggleRectWidth
+              ? map(randVal * activity, 0.1, 1, columnWidth / 10, columnWidth)
+              : columnWidth;
+
+            const brightness = map(randVal, 0, 1, 0, 255);
+            // const hue = (baseHue + map(randVal, 0, 1, 0, 255)) % 255;
+            // const saturation = map(bassEnergy, 0, 1, -50, 50);
+
+            stroke(50);
+            noFill();
+            rect(px, py, columnWidth, rowHeight);
+
             noStroke();
-            rectMode(CENTER);
 
-
-            userStartAudio();
-            mic = new p5.AudioIn();
-            mic.start();
-            fft = new p5.FFT(0.6, 256);
-            fft.setInput(mic);
-
-            updateSpeeds();
-        }
-
-        function draw() {
-            background(0);
-
-            if (frameCount % 120 === 0) {
-                // columnCount = floor(random(2, 10));
-                columnCount = floor(random([2, 3, 4, 5, 10]));
-                if (toggleRectWidth) {
-                    rowCount = floor(random([50, 100, 200, 300]));
-                }
-                else {
-                    rowCount = 50;
-                }
-
-                updateSpeeds();
-                toggleRectWidth = !toggleRectWidth;
+            if (toggleRectWidth) {
+              // fill(hue, saturation, brightness);
+              fill(brightness);
+            } else {
+              fill(brightness);
             }
-
-            let spectrum = fft.analyze();
-            let bassEnergy = fft.getEnergy("bass");
-
-            const bassThreshold = 30;
-            const activity = bassEnergy > bassThreshold ? map(bassEnergy, bassThreshold, 255, 0, 1) : 0;
-
-            let columnWidth = width / columnCount;
-            let rowHeight = height / rowCount;
-
-            for (let x = 0; x < columnCount; x++) {
-                let columnSpeed = speeds[x];
-
-                for (let y = 0; y < rowCount; y++) {
-                    let px = x * columnWidth + columnWidth / 2;
-                    let py = y * rowHeight + rowHeight / 2;
-
-                    let randVal = pseudoRandom(x, y, frameCount * columnSpeed);
-                    let rectWidth = toggleRectWidth ? map(randVal * activity, 0.1, 1, columnWidth / 10, columnWidth) : columnWidth;
-
-
-                    const brightness = map(randVal, 0, 1, 0, 255);
-                    // const hue = (baseHue + map(randVal, 0, 1, 0, 255)) % 255;
-                    // const saturation = map(bassEnergy, 0, 1, -50, 50);
-
-                    stroke(50)
-                    noFill()
-                    rect(px, py, columnWidth, rowHeight);
-
-                    noStroke()
-
-                    if (toggleRectWidth) {
-                        // fill(hue, saturation, brightness);
-                        fill(brightness);
-                    }
-                    else {
-                        fill(brightness);
-                    }
-                    rect(px, py, rectWidth, rowHeight);
-                }
-            }
-            baseHue = (baseHue + 1) % 255;
-
+            rect(px, py, rectWidth, rowHeight);
+          }
         }
+        baseHue = (baseHue + 1) % 255;
+      }
 
-        function updateSpeeds() {
-            speeds = [];
-            for (let i = 0; i < columnCount; i++) {
-                speeds.push(random(0.0000005, 0.000002));
-            }
+      function updateSpeeds() {
+        speeds = [];
+        for (let i = 0; i < columnCount; i++) {
+          speeds.push(random(0.0000005, 0.000002));
         }
+      }
 
-        function pseudoRandom(x, y, t = 0) {
-            let seed = sin(x * 12.9898 + y * 78.233 + t) * 43758.5453123;
-            return seed - floor(seed);
-        }
+      function pseudoRandom(x, y, t = 0) {
+        let seed = sin(x * 12.9898 + y * 78.233 + t) * 43758.5453123;
+        return seed - floor(seed);
+      }
 
-        function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
-        }
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
     </script>
-
-</head>
-
-<header>
-    <a href="datamosh.html">Datamosh</a>
-    <a href="barcode.html">Barcode</a>
-    <a href="blob.html">Detection</a>
-    <a href="vol.html">Volume</a>
-    <a href="ascii.html">Ascii</a>
-    <a href="thresh.html">Thresh</a>
-    
-</header>
-
-
-<body></body>
-
-<style>
+  </head>
+  <style>
     body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
     }
-
-    header {
-        background: black;
-        color: white;
-        padding: 10px 0;
-        position: absolute;
-        width: 100%;
-        opacity: 0;
-    }
-
-    header:hover {
-        opacity: 1;
-    }
-
-    header a {
-        margin: 0 10px;
-        color: white;
-        text-decoration: none;
-    }
-</style>
-
+  </style>
 </html>
