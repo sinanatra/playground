@@ -41,10 +41,10 @@
         "维护真理者",
         "姿态的傲慢",
 
-        "The power of truth",
-        "never lies in",
-        "the arrogant air",
-        "of the guardians of truth",
+        // "The power of truth",
+        // "never lies in",
+        // "the arrogant air",
+        // "of the guardians of truth",
 
         // "As you prepare your breakfast, think of others",
         // "As you conduct your wars, think of others",
@@ -230,7 +230,7 @@
         while (lo <= hi) {
           let mid = floor((lo + hi) / 2);
           let h = measureBlockHeight(s, mid, textWrapWidth);
-          if (h <= height * 0.4) {
+          if (h <= height * 0.3) {
             best = mid;
             lo = mid + 1;
           } else {

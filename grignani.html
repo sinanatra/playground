@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+      let mic, fft;
+      let drift = 0;
+      let seed = 0;
+      let grid = 100;
+      let variance = 12.0;
+      function setup() {
+        pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        rectMode(CENTER);
+        noStroke();
+        userStartAudio();
+        mic = new p5.AudioIn();
+        mic.start();
+        fft = new p5.FFT(0.85, 512);
+        fft.setInput(mic);
+      }
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+      function draw() {
+        background(0);
+        const a = fft.getEnergy("bass") / 255;
+        const m = fft.getEnergy("mid") / 255;
+        const h = fft.getEnergy("treble") / 255;
+        drift += 0.004 + 0.016 * h;
+        seed += 0.001 + 0.004 * m;
+        if (frameCount % 240 === 0) grid = random([50, 100, 200]);
+        if (frameCount % 40 === 0)
+          variance = random([1, 3, 5, 10, 20, 50, 100, 200]);
+
+        const cw = width / grid;
+        const ch = height / grid;
+        const t = millis() * 0.0012;
+        for (let j = 0; j < grid; j++) {
+          for (let i = 0; i < grid; i++) {
+            let x = i + 0.5;
+            let y = j + 0.5;
+            let nx = x / grid - 0.5;
+            let ny = y / grid - 0.5;
+            let r = sqrt(nx * nx + ny * ny);
+            let th = atan2(ny, nx);
+            let w =
+              sin(r * variance + drift * 0.7 + t * 2.0) +
+              sin(th * variance + t * 1.4) +
+              sin((nx + ny) * 36.0 + seed * 8.0);
+            let v = constrain(0.5 + 0.5 * w, 0, 1);
+            let k = ((i + j) & 1) === 0 ? v : 1.0 - v;
+            let shade = k < 0.5 ? 0 : 255;
+            fill(shade);
+            rect(i * cw + cw * 0.5, j * ch + ch * 0.5, cw + 1, ch + 1);
+          }
+        }
+        push();
+        blendMode(ADD);
+        fill(255, 16 + 24 * a);
+        rect(width * 0.5, height * 0.5, width, 1);
+        rect(width * 0.5, height * 0.25, width, 1);
+        rect(width * 0.5, height * 0.75, width, 1);
+        pop();
+      }
+    </script>
+  </head>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</html>

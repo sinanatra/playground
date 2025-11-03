@@ -134,12 +134,50 @@
       });
     </script>
   </head>
+
+  <header>
+    <span id="controls">
+      <label for="grid-slider" style="color: white"
+        >Grid: <span id="grid-value">25</span></label
+      >
+      <input
+        type="range"
+        id="grid-slider"
+        min="10"
+        max="50"
+        step="1"
+        value="25"
+      />
+    </span>
+  </header>
+
+  <body></body>
+
   <style>
     body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+      background: black;
+      color: white;
+      padding: 10px 0;
+      position: absolute;
+      width: 100%;
+      opacity: 0;
+    }
+
+    header:hover {
+      opacity: 1;
+    }
+
+    header a {
+      margin: 0 10px;
+      color: white;
+      text-decoration: none;
     }
   </style>
 </html>
