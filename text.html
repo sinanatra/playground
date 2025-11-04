@@ -42,6 +42,72 @@
         "System",
         "Kein",
         "Morgen",
+        "Kein",
+        "Heimat",
+        "Kein",
+        "Leben",
+        "Kein",
+        "Tod",
+        "Kein",
+        "Angst",
+        "Kein",
+        "Körper",
+        "Kein",
+        "Seele",
+        "Kein",
+        "Liebe",
+        "Kein",
+        "Zeit",
+        "Kein",
+        "Hoffnung",
+        "Kein",
+        "Schmerz",
+        "Kein",
+        "Sinn",
+        "Kein",
+        "Vergangenheit",
+        "Kein",
+        "Zukunft",
+        "Kein",
+        "Rettung",
+        "Kein",
+        "Grenze",
+        "Kein",
+        "König",
+        "Kein",
+        "Kampf",
+        "Kein",
+        "Himmel",
+        "Kein",
+        "Hölle",
+        "Kein",
+        "Signal",
+        "Kein",
+        "Ort",
+        "Kein",
+        "Weg",
+        "Kein",
+        "Atem",
+        "Kein",
+        "Rausch",
+        "Kein",
+        "Blick",
+        "Kein",
+        "Klang",
+        "Kein",
+        "Trauer",
+        "Kein",
+        "Erinnerung",
+        "Kein",
+        "Mensch",
+        "Kein",
+        "Feuer",
+        "Kein",
+        "Stille",
+        "Kein",
+        "Wunder",
+        "Kein",
+        "Ende",
       ];
 
       let textIndex = 0;
@@ -62,12 +128,12 @@
         ["#222", "#111"],
       ];
       let paletteIndex = 0;
-      let stripe = 20;
+      let stripe = 5;
       let strengthPct = 0.08;
       let strength = 2;
       let phase = 0;
-      let speed = 1;
-      let step = 5;
+      let speed = 2;
+      let step = 4;
 
       function setup() {
         // pixelDensity(1);
@@ -169,18 +235,19 @@
         let dt = deltaTime / 100;
         phase += dt * speed;
 
-        if (frameCount % 30 === 0) {
-          //   stripe = random(10, 22);
-          step = random(3, 6);
+        if (frameCount % 60 === 0) {
+          stripe = random(3, 22);
           textIndex = (textIndex + 1) % texts.length;
           strengthPct = random(0.01, 0.1);
           strength = random(1, 10);
+
           buildMask();
         }
-        if (frameCount % 60 === 0) {
-          paletteIndex = (paletteIndex + 1) % palettes.length;
-          buildMask();
-        }
+        // if (frameCount % 300 === 0) {
+        //   //   step = random(3, 8);
+        //   paletteIndex = (paletteIndex + 1) % palettes.length;
+        //   buildMask();
+        // }
 
         let p = palettes[paletteIndex % palettes.length];
         let c1 = color(p[0]),
