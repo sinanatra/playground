@@ -9,6 +9,7 @@
     <script>
       let mic, fft;
       let drift = 0;
+      let driftV = 0.004;
       let seed = 0;
       let grid = 200;
       let variance = 1000;
@@ -31,10 +32,13 @@
         const a = fft.getEnergy("bass") / 255;
         const m = fft.getEnergy("mid") / 255;
         const h = fft.getEnergy("treble") / 255;
-        drift += 0.004 + 0.016 * h;
+
+        drift += driftV + 0.016 * h;
         seed += 0.001 + 0.004 * m;
-        if (frameCount % 240 === 0) grid = random(80, 250);
+
+        if (frameCount % 240 === 0) grid = random(100, 280);
         if (frameCount % 60 === 0) variance = random(100, 3000);
+        if (frameCount % 12 === 0) driftV = random(0.1, 1.0);
 
         // if (frameCount % 60 === 0) variance = random([100, 500, 1000, 2000]);
 
@@ -50,7 +54,7 @@
             let r = sqrt(nx * nx + ny * ny);
             let th = atan2(ny, nx);
             let w =
-              sin(r * variance + drift * 0.7 + t * 2.0) +
+              sin(r * variance + drift * driftV + t * 2.0) +
               sin(th * variance + t * 1.4) +
               sin((nx + ny) * 36.0 + seed * 8.0);
             let v = constrain(0.5 + 0.5 * w, 0, 1);
