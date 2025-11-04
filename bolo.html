@@ -32,6 +32,33 @@
       let s2R = 0.12;
       let s3R = 0.08;
 
+      let palettes = [
+        ["blue", "red"],
+        ["yellow", "purple"],
+        ["lime", "fuchsia"],
+        ["aqua", "crimson"],
+        ["chartreuse", "magenta"],
+        ["deepskyblue", "orange"],
+        ["cyan", "orangered"],
+        ["hotpink", "greenyellow"],
+        ["violet", "lime"],
+        ["turquoise", "tomato"],
+        ["gold", "mediumblue"],
+        ["lawngreen", "deeppink"],
+        ["orange", "darkviolet"],
+        ["springgreen", "red"],
+        ["mediumorchid", "yellow"],
+        ["dodgerblue", "magenta"],
+        ["aquamarine", "indigo"],
+        ["pink", "blue"],
+        ["goldenrod", "darkturquoise"],
+        ["chartreuse", "deeppink"],
+      ];
+
+      let paletteIndex = 0;
+      let lastPaletteSwitch = 0;
+      let paletteHoldMs = 6000;
+
       function setup() {
         pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
@@ -162,6 +189,11 @@
         }
       }
 
+      function pickColor(v) {
+        let p = palettes[paletteIndex % palettes.length];
+        return color(v ? p[0] : p[1]);
+      }
+
       function draw() {
         background(0);
         const a = fft.getEnergy("bass") / 255;
@@ -199,18 +231,17 @@
               x1 = colPos[x + 1];
             let y0 = rowPos[y],
               y1 = rowPos[y + 1];
-            if (v) {
-              fill(255, 0, 0);
-            } else {
-              fill(0, 0, 255);
-            }
+            fill(pickColor(v));
             rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
           }
+        }
+        if (millis() - lastPaletteSwitch > paletteHoldMs) {
+          paletteIndex++;
+          lastPaletteSwitch = millis();
         }
         if (frameCount % 40 === 0) {
           initDraft();
           initSeeds();
-
           s1R = random([0.22, 0.55, 0.8]);
           s2R = random([0.22, 0.55, 0.8]);
           s3R = random([0.22, 0.55, 0.8]);
@@ -219,6 +250,10 @@
 
       function keyPressed() {
         if (key === " ") initSeeds();
+        if (key === "c") {
+          paletteIndex++;
+          lastPaletteSwitch = millis();
+        }
       }
       function mousePressed() {
         initSeeds();
