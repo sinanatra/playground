@@ -35,29 +35,26 @@
       let palettes = [
         ["blue", "red"],
         ["yellow", "purple"],
-        ["lime", "fuchsia"],
-        ["aqua", "crimson"],
-        ["chartreuse", "magenta"],
-        ["deepskyblue", "orange"],
+
+        ["white", "black"],
+
         ["cyan", "orangered"],
-        ["hotpink", "greenyellow"],
-        ["violet", "lime"],
-        ["turquoise", "tomato"],
         ["gold", "mediumblue"],
-        ["lawngreen", "deeppink"],
         ["orange", "darkviolet"],
         ["springgreen", "red"],
         ["mediumorchid", "yellow"],
         ["dodgerblue", "magenta"],
         ["aquamarine", "indigo"],
         ["pink", "blue"],
-        ["goldenrod", "darkturquoise"],
-        ["chartreuse", "deeppink"],
+
+        ["#9941FF", "lime"],
+        ["#FF4701", "#FFFF04"],
+        ["#222", "#111"],
       ];
 
       let paletteIndex = 0;
       let lastPaletteSwitch = 0;
-      let paletteHoldMs = 6000;
+      let paletteHoldMs = 20000;
 
       function setup() {
         pixelDensity(1);
@@ -193,6 +190,8 @@
         let p = palettes[paletteIndex % palettes.length];
         return color(v ? p[0] : p[1]);
       }
+
+     
 
       function draw() {
         background(0);
