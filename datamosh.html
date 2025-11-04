@@ -14,6 +14,9 @@
         "media/video_3.mp4",
         "media/video_4.mp4",
         "media/video_5.mp4",
+        "media/video_6.mp4",
+        "media/video_7.mp4",
+        "media/video_8.mp4",
       ];
       videoUrls = shuffleArray(videoUrls);
       let currentVideoIndex = 0;
@@ -69,7 +72,7 @@
       let textDuration = 0;
       let nextTextAt = 0;
       let textWrapWidth = 0;
-      let textFontSize = 5;
+      let textFontSize = 64;
 
       async function setup() {
         colorMode(HSL, 360, 100, 100);
@@ -169,7 +172,7 @@
         } else {
           if (millis() - lastPeakTime > random(3000, 8000)) {
             datamoshRepeats = int(random(2, 4));
-            if (random() < 0.3) datamoshRepeats += int(random(3, 5));
+            if (random() < 0.3) datamoshRepeats += int(random(2, 4));
             lastPeakTime = millis();
           }
           vid.speed(1);
@@ -180,8 +183,6 @@
           textDuration = random(1200, 4000);
           textStart = millis();
           showText = true;
-          datamoshRepeats = int(random(3, 7));
-          computeTextLayout(textValue);
         }
 
         if (videoCanvas) {
@@ -190,17 +191,10 @@
         }
 
         if (showText) {
-          fill("#0DF610");
-          let t = millis() - textStart;
-          drawWrappedText(
-            textValue,
-            width / 2,
-            height / 2,
-            textWrapWidth,
-            textFontSize
-          );
-
-          if (t >= textDuration) {
+          fill("lime");
+          textSize(textFontSize);
+          text(textValue, width / 2, height / 2);
+          if (millis() - textStart >= textDuration) {
             showText = false;
             nextTextAt = millis() + random(6000, 16000);
           }
@@ -220,57 +214,6 @@
             frame.close();
           } catch (e) {}
         }
-      }
-
-      function computeTextLayout(s) {
-        textWrapWidth = width * 0.9;
-        let lo = 10;
-        let hi = min(width, height);
-        let best = 5;
-        while (lo <= hi) {
-          let mid = floor((lo + hi) / 2);
-          let h = measureBlockHeight(s, mid, textWrapWidth);
-          if (h <= height * 0.2) {
-            best = mid;
-            lo = mid + 1;
-          } else {
-            hi = mid - 1;
-          }
-        }
-        textFontSize = best;
-      }
-
-      function drawWrappedText(s, cx, cy, maxW, size) {
-        let lines = wrapLines(s, size, maxW);
-        let totalH = lines.length * size * 1.1;
-        let y = cy - totalH / 2 + size * 0.85;
-        textSize(size);
-        for (let i = 0; i < lines.length; i++) {
-          text(lines[i], cx, y + i * size * 1.1);
-        }
-      }
-
-      function measureBlockHeight(s, size, maxW) {
-        let lines = wrapLines(s, size, maxW);
-        return lines.length * size * 1.1;
-      }
-
-      function wrapLines(s, size, maxW) {
-        textSize(size);
-        let words = s.split(/\s+/);
-        let lines = [];
-        let line = "";
-        for (let i = 0; i < words.length; i++) {
-          let test = line.length ? line + " " + words[i] : words[i];
-          if (textWidth(test) <= maxW) {
-            line = test;
-          } else {
-            if (line.length) lines.push(line);
-            line = words[i];
-          }
-        }
-        if (line.length) lines.push(line);
-        return lines;
       }
 
       async function checkCodecSupport() {
