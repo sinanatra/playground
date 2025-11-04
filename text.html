@@ -134,6 +134,7 @@
       let phase = 0;
       let speed = 2;
       let step = 4;
+      let repeat = 4;
 
       function setup() {
         // pixelDensity(1);
@@ -173,8 +174,8 @@
         field = new Float32Array(fieldW * fieldH);
         for (let i = 0; i < fieldW * fieldH; i++)
           field[i] = tmpG.pixels[i * 4 + 3] / 255;
-        blur1d(field, fieldW, fieldH, 4, true);
-        blur1d(field, fieldW, fieldH, 4, false);
+        blur1d(field, fieldW, fieldH, repeat, true);
+        blur1d(field, fieldW, fieldH, repeat, false);
       }
       function blur1d(a, w, h, r, hz) {
         let out = new Float32Array(a.length);
@@ -240,9 +241,10 @@
           textIndex = (textIndex + 1) % texts.length;
           strengthPct = random(0.01, 0.1);
           strength = random(1, 10);
-
+          repeat = int(random(4, 10));
           buildMask();
         }
+
         // if (frameCount % 300 === 0) {
         //   //   step = random(3, 8);
         //   paletteIndex = (paletteIndex + 1) % palettes.length;
