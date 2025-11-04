@@ -9,7 +9,7 @@
     <script>
       let mic, fft, vid;
       let videoUrls = [
-        "media/video_1.mp4",
+        // "media/video_1.mp4",
         "media/video_2.mp4",
         "media/video_3.mp4",
         "media/video_4.mp4",
@@ -17,6 +17,8 @@
         "media/video_6.mp4",
         "media/video_7.mp4",
         "media/video_8.mp4",
+        "media/video_9.mp4",
+        "media/video_11.mp4",
       ];
       videoUrls = shuffleArray(videoUrls);
       let currentVideoIndex = 0;
@@ -28,7 +30,7 @@
       let isWebCodecsReady = false;
       let ctx;
       let videoCanvas, videoCtx;
-      let datamoshRepeats = 3;
+      let datamoshRepeats = 7;
       let isVideoSwitching = false;
       let isFrameReady = false;
       let audioReactive = false;
@@ -171,8 +173,8 @@
           }
         } else {
           if (millis() - lastPeakTime > random(3000, 8000)) {
-            datamoshRepeats = int(random(2, 4));
-            if (random() < 0.3) datamoshRepeats += int(random(2, 4));
+            datamoshRepeats = int(random(3, 10));
+            if (random() < 0.3) datamoshRepeats = 2;
             lastPeakTime = millis();
           }
           vid.speed(1);
@@ -200,7 +202,7 @@
           }
         }
 
-        if (frameCount % 120 === 0) datamoshRepeats = 1;
+        // if (frameCount % 120 === 0) datamoshRepeats = 1;
 
         if (
           vid.elt.readyState === 4 &&
