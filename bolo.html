@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+    <script>
+      let mic, fft;
+      let drift = 0;
+      let seed = 0;
+      let grid = 100;
+      let shafts = 4;
+      let tieUp = [];
+      let threadingMap = [];
+      let treadlingMap = [];
+      let matA = [];
+      let matB = [];
+      let matC = [];
+      let seeds = [];
+      let baseRate = 0.35;
+      let band = 16;
+      let colScale = [],
+        rowScale = [];
+      let colPos = [],
+        rowPos = [];
+      let nx = 0.023,
+        ny = 0.021;
+
+      let s1R = 0.22;
+      let s2R = 0.12;
+      let s3R = 0.08;
+
+      function setup() {
+        pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        rectMode(CORNER);
+        noStroke();
+        userStartAudio();
+        mic = new p5.AudioIn();
+        mic.start();
+        fft = new p5.FFT(0.85, 512);
+        fft.setInput(mic);
+        initDraft();
+        initSeeds();
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+
+      function initDraft() {
+        band = random([16, 160, 1600]);
+        grid = random([100, 150, 200]);
+        tieUp = new Array(shafts).fill(0).map(() => new Array(shafts).fill(0));
+        let sShift = random([1, 2, 3]);
+        for (let r = 0; r < shafts; r++) {
+          tieUp[r][(r + sShift) % shafts] = 1;
+          tieUp[r][(r + sShift + 1) % shafts] = 1;
+        }
+        let blocks = random([6, 8, 10, 12]);
+        let blockLen = floor(grid / blocks);
+        let seq = [];
+        for (let b = 0; b < blocks; b++) {
+          let up = b % 2 === 0;
+          for (let i = 0; i < blockLen; i++) {
+            let v = up ? i : blockLen - 1 - i;
+            seq.push(v);
+          }
+        }
+        while (seq.length < grid) seq.push(seq[seq.length % blockLen]);
+        threadingMap = new Array(grid);
+        for (let i = 0; i < grid; i++) threadingMap[i] = seq[i] % shafts;
+        treadlingMap = new Array(grid);
+        for (let j = 0; j < grid; j++)
+          treadlingMap[j] = shafts - 1 - threadingMap[j];
+        buildMatrices();
+      }
+
+      function buildMatrices() {
+        matA = new Array(grid);
+        for (let j = 0; j < grid; j++) {
+          matA[j] = new Array(shafts).fill(0);
+          matA[j][treadlingMap[j]] = 1;
+        }
+        let thMap = new Array(shafts);
+        for (let s = 0; s < shafts; s++) thMap[s] = new Array(grid).fill(0);
+        for (let i = 0; i < grid; i++) thMap[threadingMap[i]][i] = 1;
+        matB = new Array(shafts);
+        for (let r = 0; r < shafts; r++) {
+          matB[r] = new Array(grid).fill(0);
+          for (let c = 0; c < grid; c++) {
+            let s = 0;
+            for (let k = 0; k < shafts; k++) s += tieUp[r][k] * thMap[k][c];
+            matB[r][c] = s > 0 ? 1 : 0;
+          }
+        }
+        matC = new Array(grid);
+        for (let j = 0; j < grid; j++) {
+          matC[j] = new Array(grid).fill(0);
+          for (let i = 0; i < grid; i++) {
+            let s = 0;
+            for (let k = 0; k < shafts; k++) s += matA[j][k] * matB[k][i];
+            matC[j][i] = s > 0 ? 1 : 0;
+          }
+        }
+      }
+
+      function initSeeds() {
+        seeds = [];
+        let n = random([20, 30, 40, 50, 60]);
+        for (let i = 0; i < n; i++) {
+          seeds.push({
+            x: random(grid),
+            y: random(grid),
+            vx: random(-0.03, 0.03),
+            vy: random(-0.03, 0.03),
+            phase: random(1000),
+          });
+        }
+      }
+
+      function updateWarp() {
+        if (colScale.length !== grid) colScale = new Array(grid).fill(1);
+        if (rowScale.length !== grid) rowScale = new Array(grid).fill(1);
+        let t = millis() * 0.001;
+        for (let i = 0; i < grid; i++) {
+          let s1 = 1 + s1R * sin(t * 0.8 + i * 0.19 + drift * 0.6);
+          let s2 = 1 + s1R * sin(t * 1.3 + i * 0.53 + seed * 0.9);
+          let s3 = 1 + s2R * sin(t * 0.7 + i * 0.31);
+          colScale[i] = max(0.15, s1 * s2 * s3 - 0.2);
+        }
+        for (let j = 0; j < grid; j++) {
+          let s1 = 1 + s1R * sin(t * 0.9 + j * 0.23 + drift * 0.5);
+          let s2 = 1 + s2R * sin(t * 1.1 + j * 0.41 + seed * 0.7);
+          let s3 = 1 + s3R * sin(t * 0.6 + j * 0.29);
+          rowScale[j] = max(0.15, s1 * s2 * s3 - 0.2);
+        }
+        let sumX = colScale.reduce((p, c) => p + c, 0);
+        let sumY = rowScale.reduce((p, c) => p + c, 0);
+        let sx = width / sumX;
+        let sy = height / sumY;
+        colPos[0] = 0;
+        for (let i = 1; i <= grid; i++)
+          colPos[i] = colPos[i - 1] + colScale[i - 1] * sx;
+        rowPos[0] = 0;
+        for (let j = 1; j <= grid; j++)
+          rowPos[j] = rowPos[j - 1] + rowScale[j - 1] * sy;
+      }
+
+      function updateSeeds() {
+        let t = millis() * 0.001;
+        for (let s = 0; s < seeds.length; s++) {
+          seeds[s].x += seeds[s].vx + 0.03 * sin(t * 0.5 + seeds[s].phase);
+          seeds[s].y +=
+            seeds[s].vy + 0.03 * cos(t * 0.6 + seeds[s].phase * 1.3);
+          if (seeds[s].x < 0) seeds[s].x += grid;
+          if (seeds[s].x >= grid) seeds[s].x -= grid;
+          if (seeds[s].y < 0) seeds[s].y += grid;
+          if (seeds[s].y >= grid) seeds[s].y -= grid;
+        }
+      }
+
+      function draw() {
+        background(0);
+        const a = fft.getEnergy("bass") / 255;
+        const m = fft.getEnergy("mid") / 255;
+        const h = fft.getEnergy("treble") / 255;
+        drift += 0.004 + 0.016 * h;
+        seed += 0.001 + 0.004 * m;
+        updateWarp();
+        updateSeeds();
+        let t = millis() * 0.001;
+        let rate = baseRate * (0.7 + 1.8 * (0.25 * a + 0.45 * m + 0.3 * h));
+        let radius = (t * rate * grid) % (grid * 2);
+        let diagPhase = t * 1.2;
+        for (let y = 0; y < grid; y++) {
+          for (let x = 0; x < grid; x++) {
+            let dmin = 1e9;
+            for (let s = 0; s < seeds.length; s++) {
+              let dx = x - seeds[s].x;
+              let dy = y - seeds[s].y;
+              let d = abs(dx) + abs(dy);
+              if (d < dmin) dmin = d;
+            }
+            let rings = floor((radius - dmin) / band);
+            let toggleA = rings & 1;
+            let wave =
+              sin(x * 0.19 + y * 0.17 + diagPhase) +
+              sin(x * 0.07 + diagPhase * 0.7) +
+              sin(y * 0.09 + diagPhase * 0.9);
+            let toggleB = wave > 0 ? 1 : 0;
+            let n = noise(x * nx + t * 0.35, y * ny + t * 0.33);
+            let toggleC = n > 0.5 ? 1 : 0;
+            let bit = matC[y][x] ^ (((x + y) & 1) === 0 ? 0 : 1);
+            let v = bit ^ toggleA ^ toggleB ^ toggleC;
+            let x0 = colPos[x],
+              x1 = colPos[x + 1];
+            let y0 = rowPos[y],
+              y1 = rowPos[y + 1];
+            if (v) {
+              fill(255, 0, 0);
+            } else {
+              fill(0, 0, 255);
+            }
+            rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+          }
+        }
+        if (frameCount % 40 === 0) {
+          initDraft();
+          initSeeds();
+
+          s1R = random([0.22, 0.55, 0.8]);
+          s2R = random([0.22, 0.55, 0.8]);
+          s3R = random([0.22, 0.55, 0.8]);
+        }
+      }
+
+      function keyPressed() {
+        if (key === " ") initSeeds();
+      }
+      function mousePressed() {
+        initSeeds();
+      }
+    </script>
+  </head>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</html>
