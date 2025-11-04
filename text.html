@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
+    <script src="p5.min.js"></script>
+    <script src="p5.sound.min.js"></script>
+  </head>
+  <body>
+    <script>
+      let pg, maskW, maskH, field, fieldW, fieldH, tmpG;
+
+      let texts = [
+        "Kein",
+        "Hass",
+        "Kein",
+        "Geld",
+        "Kein",
+        "Gott",
+        "Kein",
+        "Chef",
+        "Kein",
+        "Plan",
+        "Kein",
+        "Ziel",
+        "Kein",
+        "Schlaf",
+        "Kein",
+        "Traum",
+        "Kein",
+        "Mitleid",
+        "Kein",
+        "Friede",
+        "Kein",
+        "Vertrauen",
+        "Kein",
+        "Glück",
+        "Kein",
+        "Licht",
+        "Kein",
+        "System",
+        "Kein",
+        "Morgen",
+      ];
+
+      let textIndex = 0;
+      let palettes = [
+        ["white", "black"],
+        ["blue", "red"],
+        ["yellow", "purple"],
+        ["cyan", "orangered"],
+        ["gold", "mediumblue"],
+        ["orange", "darkviolet"],
+        ["springgreen", "red"],
+        ["mediumorchid", "yellow"],
+        ["dodgerblue", "magenta"],
+        ["aquamarine", "indigo"],
+        ["pink", "blue"],
+        ["#9941FF", "lime"],
+        ["#FF4701", "#FFFF04"],
+        ["#222", "#111"],
+      ];
+      let paletteIndex = 0;
+      let stripe = 20;
+      let strengthPct = 0.08;
+      let strength = 2;
+      let phase = 0;
+      let speed = 1;
+      let step = 5;
+
+      function setup() {
+        // pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        noStroke();
+        buildMask();
+      }
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        buildMask();
+      }
+      function buildMask() {
+        strength = Math.min(width, height) * strengthPct;
+        maskW = width;
+        maskH = height;
+        pg = createGraphics(maskW, maskH);
+        pg.pixelDensity(1);
+        pg.clear();
+        pg.textAlign(CENTER, CENTER);
+        pg.textStyle(BOLD);
+        let s = Math.min(maskW, maskH) * 0.7;
+        pg.textSize(s);
+        let txt = texts[textIndex % texts.length];
+        while (pg.textWidth(txt) > maskW * 0.86) (s *= 0.96), pg.textSize(s);
+        pg.fill(255);
+        pg.text(txt, maskW * 0.5, maskH * 0.5);
+        buildField();
+      }
+      function buildField() {
+        fieldW = Math.max(256, Math.floor(width * 0.35));
+        fieldH = Math.max(256, Math.floor(height * 0.35));
+        tmpG = createGraphics(fieldW, fieldH);
+        tmpG.pixelDensity(1);
+        tmpG.clear();
+        tmpG.image(pg, 0, 0, fieldW, fieldH);
+        tmpG.loadPixels();
+        field = new Float32Array(fieldW * fieldH);
+        for (let i = 0; i < fieldW * fieldH; i++)
+          field[i] = tmpG.pixels[i * 4 + 3] / 255;
+        blur1d(field, fieldW, fieldH, 4, true);
+        blur1d(field, fieldW, fieldH, 4, false);
+      }
+      function blur1d(a, w, h, r, hz) {
+        let out = new Float32Array(a.length);
+        if (hz) {
+          for (let y = 0; y < h; y++) {
+            let sum = 0;
+            for (let x = -r; x <= r; x++) {
+              let xi = Math.min(w - 1, Math.max(0, x));
+              sum += a[y * w + xi];
+            }
+            for (let x = 0; x < w; x++) {
+              out[y * w + x] = sum / (r * 2 + 1);
+              let x0 = x - r,
+                x1 = x + r + 1;
+              sum -= a[y * w + (x0 >= 0 ? x0 : 0)];
+              sum += a[y * w + (x1 < w ? x1 : w - 1)];
+            }
+          }
+        } else {
+          for (let x = 0; x < w; x++) {
+            let sum = 0;
+            for (let y = -r; y <= r; y++) {
+              let yi = Math.min(h - 1, Math.max(0, y));
+              sum += a[yi * w + x];
+            }
+            for (let y = 0; y < h; y++) {
+              out[y * w + x] = sum / (r * 2 + 1);
+              let y0 = y - r,
+                y1 = y + r + 1;
+              sum -= a[(y0 >= 0 ? y0 : 0) * w + x];
+              sum += a[(y1 < h ? y1 : h - 1) * w + x];
+            }
+          }
+        }
+        a.set(out);
+      }
+      function sampleField(px, py) {
+        let u = (px / width) * fieldW;
+        let v = (py / height) * fieldH;
+        let x0 = floor(u),
+          y0 = floor(v);
+        let x1 = min(fieldW - 1, x0 + 1),
+          y1 = min(fieldH - 1, y0 + 1);
+        let tx = u - x0,
+          ty = v - y0;
+        let i00 = field[y0 * fieldW + x0],
+          i10 = field[y0 * fieldW + x1],
+          i01 = field[y1 * fieldW + x0],
+          i11 = field[y1 * fieldW + x1];
+        return (
+          i00 * (1 - tx) * (1 - ty) +
+          i10 * tx * (1 - ty) +
+          i01 * (1 - tx) * ty +
+          i11 * tx * ty
+        );
+      }
+      function draw() {
+        let dt = deltaTime / 100;
+        phase += dt * speed;
+
+        if (frameCount % 30 === 0) {
+          //   stripe = random(10, 22);
+          step = random(3, 6);
+          textIndex = (textIndex + 1) % texts.length;
+          strengthPct = random(0.01, 0.1);
+          strength = random(1, 10);
+          buildMask();
+        }
+        if (frameCount % 60 === 0) {
+          paletteIndex = (paletteIndex + 1) % palettes.length;
+          buildMask();
+        }
+
+        let p = palettes[paletteIndex % palettes.length];
+        let c1 = color(p[0]),
+          c2 = color(p[1]);
+        background(0);
+        for (let y = 0; y < height; y += step) {
+          for (let x = 0; x < width; x += step) {
+            let val = sampleField(x, y);
+            let off = strength * (val - 0.5);
+            let wy = y + off;
+            let band = floor((wy + stripe * sin(phase * 0.1)) * (1 / stripe));
+            fill((band & 1) === 0 ? c1 : c2);
+            rect(x, y, step, step);
+          }
+        }
+      }
+      function keyPressed() {
+        if (key === " ") {
+          textIndex = (textIndex + 1) % texts.length;
+          buildMask();
+        }
+        if (key === "c") {
+          paletteIndex = (paletteIndex + 1) % palettes.length;
+          buildMask();
+        }
+      }
+    </script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        overflow: hidden;
+      }
+      canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        /* filter: blur(1px) contrast(50); */
+      }
+    </style>
+  </body>
+</html>

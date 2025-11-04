@@ -8,8 +8,8 @@
     <script src="p5.sound.min.js"></script>
     <script>
       let mic, fft;
-      let cols = 72,
-        rows = 48;
+      let cols = 100,
+        rows = 50;
       let cellW, cellH;
       let colAmp = [];
       let seed = 0;
@@ -47,7 +47,7 @@
           for (let i = a0; i <= a1; i++) s += spec[i];
           colAmp[c] = s / (a1 - a0 + 1 || 1) / 255;
         }
-        strobe = (strobe + 1) % 40;
+        strobe = (strobe + 1) %120;
         const invert = strobe < 2;
         for (let y = 0; y < rows; y++) {
           const ry = y / rows;
