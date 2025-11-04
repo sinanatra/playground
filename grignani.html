@@ -13,6 +13,29 @@
       let seed = 0;
       let grid = 200;
       let variance = 1000;
+      let useColor = false;
+
+      let palettes = [
+        ["blue", "red"],
+        ["yellow", "purple"],
+        ["white", "black"],
+        ["cyan", "orangered"],
+        ["gold", "mediumblue"],
+        ["orange", "darkviolet"],
+        ["springgreen", "red"],
+        ["mediumorchid", "yellow"],
+        ["dodgerblue", "magenta"],
+        ["aquamarine", "indigo"],
+        ["pink", "blue"],
+        ["#9941FF", "lime"],
+        ["#FF4701", "#FFFF04"],
+        ["#222", "#111"],
+      ];
+
+      let paletteIndex = 0;
+      let lastPaletteSwitch = 0;
+      let paletteHoldMs = 5000;
+
       function setup() {
         pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
@@ -24,9 +47,11 @@
         fft = new p5.FFT(0.85, 512);
         fft.setInput(mic);
       }
+
       function windowResized() {
         resizeCanvas(windowWidth, windowHeight);
       }
+
       function draw() {
         background(0);
         const a = fft.getEnergy("bass") / 255;
@@ -36,15 +61,15 @@
         drift += driftV + 0.016 * h;
         seed += 0.001 + 0.004 * m;
 
-        if (frameCount % 240 === 0) grid = random(100, 280);
+        // grid = 300
+        if (frameCount % 40 === 0) grid = random(100, 300);
         if (frameCount % 60 === 0) variance = random(100, 3000);
         if (frameCount % 12 === 0) driftV = random(0.1, 1.0);
-
-        // if (frameCount % 60 === 0) variance = random([100, 500, 1000, 2000]);
 
         const cw = width / grid;
         const ch = height / grid;
         const t = millis() * 0.0012;
+
         for (let j = 0; j < grid; j++) {
           for (let i = 0; i < grid; i++) {
             let x = i + 0.5;
@@ -59,11 +84,22 @@
               sin((nx + ny) * 36.0 + seed * 8.0);
             let v = constrain(0.5 + 0.5 * w, 0, 1);
             let k = ((i + j) & 1) === 0 ? v : 1.0 - v;
-            let shade = k < 0.5 ? 0 : 255;
-            fill(shade);
+
+            if (useColor) {
+              let p = palettes[paletteIndex % palettes.length];
+              let c1 = color(p[0]);
+              let c2 = color(p[1]);
+              let shade = k < 0.5 ? c1 : c2;
+              fill(shade);
+            } else {
+              let shade = k < 0.5 ? 0 : 255;
+              fill(shade);
+            }
+
             rect(i * cw + cw * 0.5, j * ch + ch * 0.5, cw + 1, ch + 1);
           }
         }
+
         push();
         blendMode(ADD);
         fill(255, 16 + 24 * a);
@@ -71,6 +107,21 @@
         rect(width * 0.5, height * 0.25, width, 1);
         rect(width * 0.5, height * 0.75, width, 1);
         pop();
+
+        if (millis() - lastPaletteSwitch > paletteHoldMs) {
+          paletteIndex++;
+          lastPaletteSwitch = millis();
+        }
+      }
+
+      function keyPressed() {
+        if (key === "c") {
+          paletteIndex++;
+          lastPaletteSwitch = millis();
+        }
+        if (key === "b") {
+          useColor = !useColor;
+        }
       }
     </script>
   </head>
