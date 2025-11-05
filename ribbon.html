@@ -19,13 +19,13 @@
         swayAmp = [],
         swayFreq = [],
         startTimes = [],
-        vertNoiseAmp = [];
-      let curlDir = [];
+        vertNoiseAmp = [],
+        curlDir = [],
+        highlightIdx = [];
       let step = 2;
       let colors = [
-        "#ffffff",
-        "#f64949",
         "#FADA15",
+        "#f64949",
         "#CCB16A",
         "#B3AC9A",
         "#B2CAF8",
@@ -57,7 +57,8 @@
           swayFreq[i] = 0.6;
           vertNoiseAmp[i] = vN;
           startTimes[i] = millis() + i * 100;
-          curlDir[i] = random([1, -1]); // random curl direction
+          curlDir[i] = random([1, -1]);
+          highlightIdx[i] = int(random(linesPerCol));
         }
       }
 
@@ -93,9 +94,15 @@
         let vnoise = vertNoiseAmp[ci];
         let maxS = pathLenMax(foldY, radius, wrap);
         let sEnd = constrain(prog, 0, maxS);
-        let cVal = i % 2 === 0 ? currentColor : 0;
+        let local = i % linesPerCol;
+        let cVal =
+          i % 2 === 0
+            ? local === highlightIdx[ci]
+              ? currentColor
+              : "#ffffff"
+            : 0;
         stroke(cVal);
-        strokeWeight(stripeW + 0.5);
+        strokeWeight(stripeW);
         beginShape();
         for (let s = 0; s <= sEnd; s += step) {
           let p = pathPoint(baseX, foldY, radius, s, amp, freq, vnoise, ci);
@@ -107,7 +114,6 @@
       function draw() {
         step = 4;
         background(0);
-
         if (frameCount % 1000 === 0) {
           cols = int(random(5, 20));
           linesPerCol = int(random(10, 30));
@@ -132,6 +138,8 @@
         if (key === "c") {
           colorIndex = (colorIndex + 1) % colors.length;
           currentColor = colors[colorIndex];
+          for (let i = 0; i < cols; i++)
+            highlightIdx[i] = int(random(linesPerCol));
         }
       }
     </script>
