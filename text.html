@@ -128,12 +128,12 @@
         ["#222", "#111"],
       ];
       let paletteIndex = 0;
-      let stripe = 5;
+      let stripe = 15;
       let strengthPct = 0.08;
-      let strength = 2;
+      let strength = 1;
       let phase = 0;
       let speed = 2;
-      let step = 4;
+      let step = 5;
       let repeat = 4;
 
       function setup() {
@@ -153,6 +153,7 @@
         pg = createGraphics(maskW, maskH);
         pg.pixelDensity(1);
         pg.clear();
+        // pg.textFont("Courier New");
         pg.textAlign(CENTER, CENTER);
         pg.textStyle(BOLD);
         let s = Math.min(maskW, maskH) * 0.7;
@@ -237,18 +238,19 @@
         phase += dt * speed;
 
         if (frameCount % 60 === 0) {
-          stripe = random(3, 22);
+          //   stripe = random(5, 22);
           textIndex = (textIndex + 1) % texts.length;
           strengthPct = random(0.01, 0.1);
           strength = random(1, 10);
           repeat = int(random(4, 10));
+          step = random(3, 10);
           buildMask();
         }
 
         // if (frameCount % 300 === 0) {
         //   //   step = random(3, 8);
         //   paletteIndex = (paletteIndex + 1) % palettes.length;
-        //   buildMask();
+        //   buildMask();c
         // }
 
         let p = palettes[paletteIndex % palettes.length];
@@ -261,6 +263,7 @@
             let off = strength * (val - 0.5);
             let wy = y + off;
             let band = floor((wy + stripe * sin(phase * 0.1)) * (1 / stripe));
+
             fill((band & 1) === 0 ? c1 : c2);
             rect(x, y, step, step);
           }
@@ -289,7 +292,7 @@
         position: absolute;
         left: 0;
         top: 0;
-        /* filter: blur(1px) contrast(50); */
+        filter: blur(1px) contrast(50);
       }
     </style>
   </body>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
+    <script src="p5.min.js"></script>
+  </head>
+  <body>
+    <script>
+      let colorIndex = 0;
+      let cols = 15;
+      let linesPerCol = 30;
+      let stripeW;
+      let foldYs = [],
+        radii = [],
+        wraps = [],
+        revealSpeeds = [],
+        swayAmp = [],
+        swayFreq = [],
+        startTimes = [],
+        vertNoiseAmp = [];
+      let curlDir = [];
+      let step = 2;
+      let colors = [
+        "#ffffff",
+        "#f64949",
+        "#FADA15",
+        "#CCB16A",
+        "#B3AC9A",
+        "#B2CAF8",
+        "#9FD389",
+      ];
+      let currentColor = colors[0];
+
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+        pixelDensity(1);
+        initParams();
+        noFill();
+        strokeCap(SQUARE);
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        initParams();
+      }
+
+      function initParams(vN = 10) {
+        stripeW = width / (cols * linesPerCol);
+        for (let i = 0; i < cols; i++) {
+          foldYs[i] = map(i, 0, cols - 1, height * 0.9, height * 0.1);
+          radii[i] = random(40, 360);
+          wraps[i] = random(2.0, 5.0);
+          revealSpeeds[i] = random(100, 120);
+          swayAmp[i] = random(10, 100);
+          swayFreq[i] = 0.6;
+          vertNoiseAmp[i] = vN;
+          startTimes[i] = millis() + i * 100;
+          curlDir[i] = random([1, -1]); // random curl direction
+        }
+      }
+
+      function smoothstep(e0, e1, x) {
+        let t = constrain((x - e0) / (e1 - e0), 0, 1);
+        return t * t * (3 - 2 * t);
+      }
+
+      function pathPoint(baseX, foldY, radius, s, amp, freq, vnoise, ci) {
+        if (s <= foldY) return { x: baseX, y: s };
+        let a = (s - foldY) / radius;
+        let k = smoothstep(0, 0.6, a);
+        let n =
+          sin(a * freq * 0.5 + ci) * vnoise * noise(a * 0.15, ci * 0.2) * k;
+        let x =
+          baseX +
+          curlDir[ci] * k * (radius * (1 - cos(a)) + amp * sin(a * freq));
+        let y = foldY + radius * sin(a) - n * 0.1;
+        return { x, y };
+      }
+
+      function pathLenMax(foldY, radius, wrap) {
+        return foldY + radius * wrap * TWO_PI;
+      }
+
+      function drawStripe(i, ci, prog) {
+        let baseX = (i + 0.5) * stripeW;
+        let foldY = foldYs[ci];
+        let radius = radii[ci];
+        let wrap = wraps[ci];
+        let amp = swayAmp[ci];
+        let freq = swayFreq[ci];
+        let vnoise = vertNoiseAmp[ci];
+        let maxS = pathLenMax(foldY, radius, wrap);
+        let sEnd = constrain(prog, 0, maxS);
+        let cVal = i % 2 === 0 ? currentColor : 0;
+        stroke(cVal);
+        strokeWeight(stripeW + 0.5);
+        beginShape();
+        for (let s = 0; s <= sEnd; s += step) {
+          let p = pathPoint(baseX, foldY, radius, s, amp, freq, vnoise, ci);
+          if (p.y <= height + 100) vertex(p.x, p.y);
+        }
+        endShape();
+      }
+
+      function draw() {
+        step = 4;
+        background(0);
+
+        if (frameCount % 1000 === 0) {
+          cols = int(random(5, 20));
+          linesPerCol = int(random(10, 30));
+          colorIndex = (colorIndex + 1) % colors.length;
+          currentColor = colors[colorIndex];
+          let vN = random(10, 100);
+          initParams(vN);
+        }
+        let now = millis();
+        for (let c = 0; c < cols; c++) {
+          let elapsed = max(0, now - startTimes[c]);
+          let prog = (elapsed / 1000) * revealSpeeds[c];
+          let start = c * linesPerCol;
+          let end = start + linesPerCol;
+          for (let i = start; i < end; i++) {
+            drawStripe(i, c, prog);
+          }
+        }
+      }
+
+      function keyPressed() {
+        if (key === "c") {
+          colorIndex = (colorIndex + 1) % colors.length;
+          currentColor = colors[colorIndex];
+        }
+      }
+    </script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </body>
+</html>
