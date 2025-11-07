@@ -9,7 +9,7 @@
   <body>
     <script>
       let colorIndex = 0;
-      let cols = 15;
+      let cols = 5;
       let linesPerCol = 30;
       let stripeW;
       let foldYs = [],
@@ -21,7 +21,8 @@
         startTimes = [],
         vertNoiseAmp = [],
         curlDir = [],
-        highlightIdx = [];
+        highlightIdx = [],
+        shrinkRates = [];
       let step = 2;
       let colors = [
         "#FADA15",
@@ -52,13 +53,14 @@
           foldYs[i] = map(i, 0, cols - 1, height * 0.9, height * 0.1);
           radii[i] = random(40, 360);
           wraps[i] = random(2.0, 5.0);
-          revealSpeeds[i] = random(100, 120);
+          revealSpeeds[i] = random(120, 160);
           swayAmp[i] = random(10, 100);
-          swayFreq[i] = 0.6;
+          swayFreq[i] = 0.1;
           vertNoiseAmp[i] = vN;
           startTimes[i] = millis() + i * 100;
           curlDir[i] = random([1, -1]);
           highlightIdx[i] = int(random(linesPerCol));
+          shrinkRates[i] = random(0.6, 0.1);
         }
       }
 
@@ -71,12 +73,13 @@
         if (s <= foldY) return { x: baseX, y: s };
         let a = (s - foldY) / radius;
         let k = smoothstep(0, 0.6, a);
+        let loops = a / TWO_PI;
+        let rr = max(4, radius * (1 - shrinkRates[ci] * loops));
         let n =
           sin(a * freq * 0.5 + ci) * vnoise * noise(a * 0.15, ci * 0.2) * k;
         let x =
-          baseX +
-          curlDir[ci] * k * (radius * (1 - cos(a)) + amp * sin(a * freq));
-        let y = foldY + radius * sin(a) - n * 0.1;
+          baseX + curlDir[ci] * k * (rr * (1 - cos(a)) + amp * sin(a * freq));
+        let y = foldY + rr * sin(a) - n * 0.1;
         return { x, y };
       }
 
