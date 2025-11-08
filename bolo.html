@@ -191,8 +191,6 @@
         return color(v ? p[0] : p[1]);
       }
 
-     
-
       function draw() {
         background(0);
         const a = fft.getEnergy("bass") / 255;
@@ -252,6 +250,18 @@
         if (key === "c") {
           paletteIndex++;
           lastPaletteSwitch = millis();
+        }
+        if (key === "r") {
+          window.location.href = random([
+            "moiree.html",
+            "bolo.html",
+            "text.html",
+            "ribbon.html",
+            "barcode.html",
+            "vol.html",
+            "matrix.html",
+            "ascii.html",
+          ]);
         }
       }
       function mousePressed() {

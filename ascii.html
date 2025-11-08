@@ -76,6 +76,20 @@
         renderASCII(t, activity, scale);
       }
 
+      function keyPressed() {
+        if (key === "r") {
+          window.location.href = random([
+            "moiree.html",
+            "bolo.html",
+            "text.html",
+            "ribbon.html",
+            "barcode.html",
+            "vol.html",
+            "matrix.html",
+            "ascii.html",
+          ]);
+        }
+      }
       function renderASCII(time, energy, dynamicScale) {
         gridCols = floor(width / grid);
         gridRows = floor(height / grid);

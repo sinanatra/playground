@@ -278,6 +278,18 @@
           paletteIndex = (paletteIndex + 1) % palettes.length;
           buildMask();
         }
+        if (key === "r") {
+          window.location.href = random([
+            "moiree.html",
+            "bolo.html",
+            "text.html",
+            "ribbon.html",
+            "barcode.html",
+            "vol.html",
+            "matrix.html",
+            "ascii.html",
+          ]);
+        }
       }
     </script>
     <style>

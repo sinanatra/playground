@@ -144,6 +144,18 @@
           for (let i = 0; i < cols; i++)
             highlightIdx[i] = int(random(linesPerCol));
         }
+        if (key === "r") {
+          window.location.href = random([
+            "moiree.html",
+            "bolo.html",
+            "text.html",
+            "ribbon.html",
+            "barcode.html",
+            "vol.html",
+            "matrix.html",
+            "ascii.html",
+          ]);
+        }
       }
     </script>
     <style>

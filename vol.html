@@ -94,6 +94,20 @@
         baseHue = (baseHue + 1) % 255;
       }
 
+      function keyPressed() {
+        if (key === "r") {
+          window.location.href = random([
+            "moiree.html",
+            "bolo.html",
+            "text.html",
+            "ribbon.html",
+            "barcode.html",
+            "vol.html",
+            "matrix.html",
+            "ascii.html",
+          ]);
+        }
+      }
       function updateSpeeds() {
         speeds = [];
         for (let i = 0; i < columnCount; i++) {
