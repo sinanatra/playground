@@ -6,22 +6,26 @@
     <title>`.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
+    <script src="video-source.js"></script>
     <script>
       let mic, fft, vid;
-      let videoUrls = [
-        "media/video_1.mp4",
-        "media/video_2.mp4",
-        "media/video_3.mp4",
-        "media/video_4.mp4",
-        "media/video_5.mp4",
-        "media/video_6.mp4",
-        "media/video_7.mp4",
-        "media/video_8.mp4",
-        "media/video_9.mp4",
-        "media/video_10.mp4",
-      ];
+      const videos = new VideoSource({
+        defaults: [
+          "media/video_1.mp4",
+          "media/video_2.mp4",
+          "media/video_3.mp4",
+          "media/video_4.mp4",
+          "media/video_5.mp4",
+          "media/video_6.mp4",
+          "media/video_7.mp4",
+          "media/video_8.mp4",
+          "media/video_9.mp4",
+          "media/video_10.mp4",
+        ],
+        size: () => [windowWidth, windowHeight],
+        onChange: (v) => (vid = v),
+      });
 
-      let currentVideoIndex = 0;
       let switchInterval = 250 * 1000;
       let lastSwitchTime = 0;
       let lastPeakTime = 0;
@@ -43,30 +47,14 @@
         await mic.start();
         fft = new p5.FFT(0.6, 256);
         fft.setInput(mic);
-        await loadVideo();
+        await videos.load();
         background(0);
       }
 
-      function mousePressed() {
+      function mousePressed(e) {
+        if (!VideoSource.clickedCanvas(e)) return;
         switchVideo();
         initializeAudioAndVideo();
-      }
-
-      async function loadVideo() {
-        if (vid) vid.remove();
-        vid = createVideo(videoUrls[currentVideoIndex]);
-        vid.size(windowWidth, windowHeight);
-        vid.volume(0);
-        vid.loop();
-        vid.hide();
-
-        vid.elt.onloadedmetadata = () => {
-          let randomStartTime = random(0, vid.duration());
-          vid.time(randomStartTime);
-          console.log(
-            `Switched to video ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`
-          );
-        };
       }
 
       let prevFrame;
@@ -178,8 +166,7 @@
       }
 
       function switchVideo() {
-        currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
-        loadVideo();
+        videos.next();
       }
 
       function windowResized() {

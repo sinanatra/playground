@@ -6,6 +6,7 @@
     <title>`.-':_,^=;+!r</title>
     <script src="p5.min.js"></script>
     <script src="p5.sound.min.js"></script>
+    <script src="video-source.js"></script>
     <script src="p5.vida.min.js"></script>
     <script>
       let vid;
@@ -18,19 +19,22 @@
       let isGray = 0;
       let bg = 0;
       let videoChangeInterval = 60000 * 5;
-      let videoUrls = [
-        "media/video_1.mp4",
-        "media/video_2.mp4",
-        "media/video_3.mp4",
-        "media/video_4.mp4",
-        "media/video_5.mp4",
-        "media/video_6.mp4",
-        "media/video_7.mp4",
-        "media/video_8.mp4",
-        "media/video_9.mp4",
-        "media/video_10.mp4",
-      ];
-      let currentVideoIndex = 0;
+      const videos = new VideoSource({
+        defaults: [
+          "media/video_1.mp4",
+          "media/video_2.mp4",
+          "media/video_3.mp4",
+          "media/video_4.mp4",
+          "media/video_5.mp4",
+          "media/video_6.mp4",
+          "media/video_7.mp4",
+          "media/video_8.mp4",
+          "media/video_9.mp4",
+          "media/video_10.mp4",
+        ],
+        size: () => [320, 240],
+        onChange: (v) => (vid = v),
+      });
 
       let color = [255, 255, 255];
       let previousval = 0;
@@ -48,8 +52,7 @@
         fft.setInput(mic);
         peakDetect = new p5.PeakDetect();
 
-        currentVideoIndex = floor(random(0, videoUrls.length));
-        await loadVideo();
+        await videos.load();
 
         myVida = new Vida(this);
         myVida.progressiveBackgroundFlag = true;
@@ -66,24 +69,6 @@
         setInterval(() => {
           switchVideo();
         }, videoChangeInterval);
-      }
-
-      async function loadVideo() {
-        if (vid) vid.pause();
-        if (vid) vid.remove();
-        vid = createVideo(videoUrls[currentVideoIndex]);
-        vid.size(320, 240);
-        vid.volume(0);
-        vid.loop();
-        vid.hide();
-
-        vid.elt.onloadedmetadata = () => {
-          let randomStartTime = random(0, vid.duration());
-          vid.time(randomStartTime);
-          console.log(
-            `Video loaded: ${videoUrls[currentVideoIndex]} starting at ${randomStartTime} seconds`
-          );
-        };
       }
 
       function keyPressed() {
@@ -258,8 +243,7 @@
       }
 
       function switchVideo() {
-        currentVideoIndex = (currentVideoIndex + 1) % videoUrls.length;
-        loadVideo();
+        videos.next();
       }
 
       function keyPressed() {
@@ -277,11 +261,9 @@
         }
       }
 
-      function mousePressed() {
+      function mousePressed(e) {
+        if (!VideoSource.clickedCanvas(e)) return;
         switchVideo();
-        if (vid) {
-          vid.play();
-        }
       }
 
       document.addEventListener("DOMContentLoaded", () => {
