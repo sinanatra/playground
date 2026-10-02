@@ -4,9 +4,10 @@
 // ("https://archive.org/details/ID"), bare archive.org ids, or direct video
 // urls. The playlist is editable from the page header and saved per page.
 //
-// archive.org files have no CORS headers, so they go through the vite /ia
-// proxy (see vite.config.js) to stay same-origin: otherwise the sketches
-// can't read their pixels (vid.get, VideoFrame, Vida).
+// archive.org's /download/ urls have no CORS headers, so the sketches couldn't
+// read their pixels (vid.get, VideoFrame, Vida). Its /cors/ endpoint serves
+// the same files with CORS, but without range requests, so videos aren't
+// seekable: for a random start they're downloaded whole and played as a blob.
 //
 // Usage (p5 global mode):
 //   const videos = new VideoSource({
@@ -20,6 +21,9 @@
 
 class VideoSource {
   static resolved = new Map();
+
+  // bigger files stream from the start instead of being downloaded whole
+  static MAX_BLOB_BYTES = 200 * 1024 * 1024;
 
   constructor({
     defaults = [],
@@ -59,16 +63,17 @@ class VideoSource {
     return null;
   }
 
-  static proxied(url) {
+  // archive.org/download/ID/file and dnXXXX.archive.org/N/items/ID/file
+  static corsUrl(url) {
     const m = url.match(
       /^https?:\/\/(?:[\w-]+\.)*archive\.org\/(?:download\/|\d+\/items\/)(.+)$/
     );
-    return m ? `/ia/download/${m[1]}` : url;
+    return m ? `https://archive.org/cors/${m[1]}` : url;
   }
 
   static async resolve(entry) {
     const item = VideoSource.archiveItem(entry);
-    if (!item) return VideoSource.proxied(entry);
+    if (!item) return VideoSource.corsUrl(entry);
     if (VideoSource.resolved.has(entry)) return VideoSource.resolved.get(entry);
     const { id, file } = item;
     const res = await fetch(`https://archive.org/metadata/${id}`);
@@ -83,7 +88,7 @@ class VideoSource {
       videos[0];
     if (!pick) throw new Error(`no video in archive.org item ${id}`);
     const path = pick.split("/").map(encodeURIComponent).join("/");
-    const url = `/ia/download/${encodeURIComponent(id)}/${path}`;
+    const url = `https://archive.org/cors/${encodeURIComponent(id)}/${path}`;
     VideoSource.resolved.set(entry, url);
     return url;
   }
@@ -99,7 +104,11 @@ class VideoSource {
     let src;
     try {
       src = await VideoSource.resolve(entry);
+      if (token !== this.token) return;
+      if (this.randomStart && src.startsWith("https://archive.org/cors/"))
+        src = await this.download(src, token);
     } catch (e) {
+      if (e.name === "AbortError") return;
       console.warn(e);
       return this.skip(token);
     }
@@ -150,7 +159,25 @@ class VideoSource {
     this.onChange(vid);
   }
 
+  // whole file as a blob url (seekable), or src itself if it's too big
+  async download(src, token) {
+    const ctrl = (this.abort = new AbortController());
+    const res = await fetch(src, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`${res.status} ${src}`);
+    const size = Number(res.headers.get("content-length"));
+    if (!size || size > VideoSource.MAX_BLOB_BYTES) {
+      ctrl.abort();
+      return src;
+    }
+    const blob = await res.blob();
+    if (token !== this.token) return src;
+    this.blobUrl = URL.createObjectURL(blob);
+    return this.blobUrl;
+  }
+
   unload() {
+    if (this.abort) this.abort.abort();
+    this.abort = null;
     if (this.vid) {
       // detach handlers first: removing the element can fire stale events
       const el = this.vid.elt;
@@ -158,6 +185,8 @@ class VideoSource {
       this.vid.remove();
       this.vid = null;
     }
+    if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
+    this.blobUrl = null;
     this.onChange(null);
   }
 
@@ -174,7 +203,7 @@ class VideoSource {
 
   skip(token) {
     if (token !== this.token) return;
-    // archive.org redirects sometimes fail transiently: retry once
+    // archive.org sometimes fails transiently: retry once
     if (!this.retried) return this.load({ retry: true });
     this.failed++;
     if (this.failed < this.urls.length) this.next();
