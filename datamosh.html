@@ -8,20 +8,17 @@
     <script src="p5.sound.min.js"></script>
     <script>
       let mic, fft, vid;
-      let videoUrls = [
-        // "media/video_1.mp4",
-        "media/video_2.mp4",
-        "media/video_3.mp4",
-        "media/video_4.mp4",
-        "media/video_5.mp4",
-        "media/video_6.mp4",
-        "media/video_7.mp4",
-        "media/video_8.mp4",
-        "media/video_9.mp4",
-        "media/video_11.mp4",
+      // accepts archive.org/details/ID pages, bare IDs, or direct video urls
+      // (local files like "media/video_2.mp4" work too)
+      const defaultVideoUrls = [
+        "https://archive.org/details/0792_Horsepower_M00251_03_31_16_00",
       ];
-      videoUrls = shuffleArray(videoUrls);
+      const STORAGE_KEY = "datamosh-urls";
+      let videoUrls = shuffleArray(loadSavedUrls() || [...defaultVideoUrls]);
       let currentVideoIndex = 0;
+      let resolvedUrls = new Map();
+      let loadToken = 0;
+      let failedLoads = 0;
       let switchInterval = 180000;
       let lastSwitchTime = 0;
       let lastPeakTime = 0;
@@ -87,7 +84,8 @@
         await loadVideo();
       }
 
-      function mousePressed() {
+      function mousePressed(e) {
+        if (e && e.target !== canvas) return;
         switchVideo();
         if (audioReactive && (!mic || !fft)) enableAudioReactive();
       }
@@ -112,26 +110,96 @@
         fft = null;
       }
 
+      function archiveId(entry) {
+        const m = entry.match(/archive\.org\/(?:details|embed)\/([^/?#]+)/);
+        if (m) return decodeURIComponent(m[1]);
+        if (/^[\w.-]+$/.test(entry) && !/\.(mp4|webm|ogv|mov|m4v)$/i.test(entry))
+          return entry;
+        return null;
+      }
+
+      // archive.org files lack CORS headers: route them through the vite proxy
+      function proxied(url) {
+        const m = url.match(
+          /^https?:\/\/(?:[\w-]+\.)*archive\.org\/(?:download\/|\d+\/items\/)(.+)$/
+        );
+        return m ? `/ia/download/${m[1]}` : url;
+      }
+
+      async function resolveVideoUrl(entry) {
+        const id = archiveId(entry);
+        if (!id) return proxied(entry);
+        if (resolvedUrls.has(id)) return resolvedUrls.get(id);
+        const res = await fetch(`https://archive.org/metadata/${id}`);
+        const meta = await res.json();
+        const files = (meta.files || []).map((f) => f.name);
+        const videos = files.filter((n) => /\.(mp4|webm|ogv|m4v)$/i.test(n));
+        const pick =
+          videos.find((n) => /_512kb\.mp4$/i.test(n)) ||
+          videos.find((n) => /\.mp4$/i.test(n)) ||
+          videos[0];
+        if (!pick) throw new Error(`no video in ${id}`);
+        const url = `/ia/download/${id}/${pick
+          .split("/")
+          .map(encodeURIComponent)
+          .join("/")}`;
+        resolvedUrls.set(id, url);
+        return url;
+      }
+
+      function skipBrokenVideo(token) {
+        if (token !== loadToken) return;
+        isVideoSwitching = false;
+        failedLoads++;
+        if (failedLoads < videoUrls.length) switchVideo();
+      }
+
       async function loadVideo() {
-        if (vid) vid.remove();
+        if (vid) {
+          // detach handlers first: removing the element can fire stale events
+          vid.elt.onloadedmetadata = vid.elt.onloadeddata = vid.elt.onerror =
+            null;
+          vid.remove();
+        }
+        vid = null;
         isVideoSwitching = true;
         isFrameReady = false;
-        vid = createVideo(videoUrls[currentVideoIndex]);
-        vid.size(windowWidth, windowHeight);
-        vid.volume(0);
-        vid.loop();
-        vid.hide();
-        vid.elt.onloadedmetadata = () => {
-          let randomStartTime = random(0, vid.duration());
-          vid.time(randomStartTime);
+        if (!videoUrls.length) return;
+        const token = ++loadToken;
+        let src;
+        try {
+          src = await resolveVideoUrl(videoUrls[currentVideoIndex]);
+        } catch (e) {
+          console.warn(e);
+          return skipBrokenVideo(token);
+        }
+        if (token !== loadToken) return;
+        // crossOrigin must be set before src, otherwise VideoFrame is tainted
+        const el = document.createElement("video");
+        el.crossOrigin = "anonymous";
+        el.playsInline = true;
+        el.src = src;
+        document.body.appendChild(el);
+        const v = new p5.MediaElement(el, _renderer._pInst);
+        vid = v;
+        v.size(windowWidth, windowHeight);
+        v.volume(0);
+        v.loop();
+        v.hide();
+        el.onloadedmetadata = () => {
+          if (token !== loadToken) return;
+          if (isFinite(el.duration)) el.currentTime = random(0, el.duration);
         };
-        vid.elt.onloadeddata = async () => {
+        el.onloadeddata = async () => {
+          if (token !== loadToken) return;
+          failedLoads = 0;
           const isSupported = await checkCodecSupport();
+          if (token !== loadToken) return;
           if (isSupported) {
             setupWebCodecs();
-            vid.elt
-              .play()
+            el.play()
               .then(() => {
+                if (token !== loadToken) return;
                 isWebCodecsReady = true;
                 isVideoSwitching = false;
                 isFrameReady = true;
@@ -141,13 +209,59 @@
             isVideoSwitching = false;
           }
         };
-        vid.elt.onerror = () => {
-          isVideoSwitching = false;
+        el.onerror = () => {
+          console.warn("video failed to load:", src);
+          skipBrokenVideo(token);
         };
       }
 
+      function loadSavedUrls() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          return Array.isArray(saved) && saved.length ? saved : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function setVideoUrls(urls, { save = true } = {}) {
+        videoUrls = shuffleArray(urls.slice());
+        try {
+          if (save) localStorage.setItem(STORAGE_KEY, JSON.stringify(urls));
+          else localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {}
+        currentVideoIndex = 0;
+        failedLoads = 0;
+        loadVideo();
+        lastSwitchTime = millis();
+      }
+
+      function addVideoUrl(url) {
+        const urls = currentUrlList();
+        urls.push(url);
+        setVideoUrlsUI(urls);
+        videoUrls.splice(currentVideoIndex + 1, 0, url);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(urls));
+        } catch (e) {}
+        switchVideo();
+      }
+
+      function currentUrlList() {
+        return document
+          .getElementById("url-list")
+          .value.split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      function setVideoUrlsUI(urls) {
+        document.getElementById("url-list").value = urls.join("\n");
+      }
+
       function draw() {
-        if (!isWebCodecsReady || isVideoSwitching || !isFrameReady) return;
+        if (!vid || !isWebCodecsReady || isVideoSwitching || !isFrameReady)
+          return;
 
         if (audioReactive && fft) {
           let spectrum = fft.analyze();
@@ -157,7 +271,7 @@
           let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
           let speed = constrain(map(bpm, 60, 180, 0.1, 5), 1, 3);
           let offset = 2000;
-          vid.speed(1);
+          // vid.speed(1);
           if (peak > threshold && millis() - lastPeakTime > offset) {
             let direction = int(map(peakIndex, 0, 255, 1, 2));
             if (peakIndex == 0) datamoshRepeats = 3;
@@ -177,7 +291,7 @@
             if (random() < 0.3) datamoshRepeats = 2;
             lastPeakTime = millis();
           }
-          vid.speed(1);
+          // vid.speed(1);
         }
 
         if (millis() > nextTextAt && !showText) {
@@ -193,7 +307,7 @@
         }
 
         if (showText) {
-          fill("lime");
+          fill("red");
           textSize(textFontSize);
           text(textValue, width / 2, height / 2);
           if (millis() - textStart >= textDuration) {
@@ -314,6 +428,34 @@
           if (audioReactive) await enableAudioReactive();
           else disableAudioReactive();
         });
+
+        setVideoUrlsUI(loadSavedUrls() || defaultVideoUrls);
+        const urlInput = document.getElementById("url-input");
+        const addUrl = () => {
+          const url = urlInput.value.trim();
+          if (!url) return;
+          urlInput.value = "";
+          addVideoUrl(url);
+        };
+        document.getElementById("url-add").addEventListener("click", addUrl);
+        urlInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") addUrl();
+        });
+        document.getElementById("url-apply").addEventListener("click", () => {
+          setVideoUrls(currentUrlList());
+        });
+        document.getElementById("url-reset").addEventListener("click", () => {
+          setVideoUrlsUI(defaultVideoUrls);
+          setVideoUrls(defaultVideoUrls, { save: false });
+        });
+        document
+          .getElementById("url-next")
+          .addEventListener("click", () => switchVideo());
+        document
+          .getElementById("url-toggle")
+          .addEventListener("click", () =>
+            document.getElementById("url-panel").classList.toggle("open")
+          );
       });
     </script>
   </head>
@@ -334,6 +476,23 @@
         value="150"
       />
     </span>
+    <span id="url-controls">
+      <input
+        type="text"
+        id="url-input"
+        placeholder="archive.org/details/… or .mp4 url"
+      />
+      <button id="url-add">Play</button>
+      <button id="url-next">Next</button>
+      <button id="url-toggle">Playlist</button>
+    </span>
+    <div id="url-panel">
+      <textarea id="url-list" spellcheck="false"></textarea>
+      <div>
+        <button id="url-apply">Apply</button>
+        <button id="url-reset">Reset defaults</button>
+      </div>
+    </div>
   </header>
 
   <body></body>
@@ -356,9 +515,42 @@
       gap: 12px;
       align-items: center;
       z-index: 10;
+      flex-wrap: wrap;
     }
-    header:hover {
+    header:hover,
+    header:focus-within {
       opacity: 1;
+    }
+    #url-controls {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    #url-input {
+      width: 320px;
+    }
+    #url-panel {
+      display: none;
+      width: 100%;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+    #url-panel.open {
+      display: block;
+    }
+    #url-list {
+      width: 100%;
+      height: 200px;
+      box-sizing: border-box;
+      background: #111;
+      color: white;
+      border: 1px solid #444;
+      font-family: monospace;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    video {
+      display: none;
     }
     header a {
       margin: 0 10px;
