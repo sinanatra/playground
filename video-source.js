@@ -13,8 +13,8 @@
 //   const videos = new VideoSource({
 //     defaults: ["media/video_1.mp4", "https://archive.org/details/ID"],
 //     size: () => [windowWidth, windowHeight],
-//     onChange: (v) => (vid = v), // new element, or null while switching
-//     onReady: (v) => {},         // first frame available
+//     onChange: (v) => (vid = v), // swapped in, already has a frame
+//     onReady: (v) => {},         // right after onChange
 //   });
 //   // in setup(), after createCanvas():
 //   videos.load();
@@ -95,99 +95,131 @@ class VideoSource {
 
   // --- playback ----------------------------------------------------------
 
-  async load({ retry = false } = {}) {
-    this.unload();
-    if (!this.urls.length) return;
+  async load() {
     const token = ++this.token;
-    this.retried = retry;
+    this.cancelPending();
+    if (!this.urls.length) return;
     const entry = this.urls[this.index];
-    let src;
+    const pending = (this.pending = { ctrl: new AbortController() });
+    const stale = () => {
+      if (token !== this.token) throw new DOMException("stale", "AbortError");
+    };
+    this.setLoading(true);
     try {
-      src = await VideoSource.resolve(entry);
-      if (token !== this.token) return;
+      let src = await VideoSource.resolve(entry);
+      stale();
       if (this.randomStart && src.startsWith("https://archive.org/cors/"))
-        src = await this.download(src, token);
+        src = await this.download(src, pending);
+      stale();
+      pending.el = VideoSource.createElement(src);
+      await this.whenReady(pending.el, pending.ctrl.signal);
+      stale();
     } catch (e) {
-      if (e.name === "AbortError") return;
-      console.warn(e);
-      return this.skip(token);
+      if (token !== this.token) return; 
+      console.warn("video failed to load:", entry, e);
+      this.cancelPending();
+      return this.skip();
     }
-    if (token !== this.token) return;
+    this.pending = null;
+    this.retried = false;
+    this.failed = 0;
+    this.swap(pending.el, pending.blobUrl);
+  }
 
+  static createElement(src) {
     // crossOrigin must be set before src, otherwise the video is tainted
     const el = document.createElement("video");
     el.crossOrigin = "anonymous";
     el.playsInline = true;
     el.muted = true;
     el.loop = true;
-    el.autoplay = true;
+    el.preload = "auto";
+    el.style.display = "none";
     el.src = src;
     document.body.appendChild(el);
-    const vid = new p5.MediaElement(el, _renderer._pInst);
-    // what p5's createVideo() does on metadata: vid.get(), vid.speed()
-    // and pixel access rely on it
-    vid.loadedmetadata = false;
-    el.addEventListener("loadedmetadata", () => {
-      vid.width = el.videoWidth;
-      vid.height = el.videoHeight;
-      if (!el.width) el.width = el.videoWidth;
-      if (!el.height) el.height = el.videoHeight;
-      if (vid.presetPlaybackRate) {
-        el.playbackRate = vid.presetPlaybackRate;
-        delete vid.presetPlaybackRate;
-      }
-      vid.loadedmetadata = true;
-    });
-    if (this.size) vid.size(...this.size());
-    vid.hide();
-    this.vid = vid;
+    return el;
+  }
 
-    el.onloadedmetadata = () => {
-      if (token !== this.token) return;
-      if (this.randomStart && isFinite(el.duration))
-        el.currentTime = Math.random() * el.duration;
-    };
-    el.onloadeddata = () => {
-      if (token !== this.token) return;
-      this.failed = 0;
-      this.onReady(vid);
-    };
-    el.onerror = () => {
-      console.warn("video failed to load:", entry, src);
-      this.skip(token);
-    };
-    this.onChange(vid);
+  // resolves once the element has a frame, at a random time if seekable
+  whenReady(el, signal) {
+    return new Promise((resolve, reject) => {
+      signal.addEventListener("abort", () =>
+        reject(new DOMException("aborted", "AbortError"))
+      );
+      el.onerror = () =>
+        reject(new Error(el.error ? el.error.message : "media error"));
+      el.onloadedmetadata = () => {
+        const end = el.seekable.length
+          ? el.seekable.end(el.seekable.length - 1)
+          : 0;
+        if (this.randomStart && end > 1) {
+          el.onseeked = () => resolve();
+          el.currentTime = Math.random() * end;
+        } else if (el.readyState >= 2) resolve();
+        else el.onloadeddata = () => resolve();
+      };
+    });
   }
 
   // whole file as a blob url (seekable), or src itself if it's too big
-  async download(src, token) {
-    const ctrl = (this.abort = new AbortController());
-    const res = await fetch(src, { signal: ctrl.signal });
+  async download(src, pending) {
+    const res = await fetch(src, { signal: pending.ctrl.signal });
     if (!res.ok) throw new Error(`${res.status} ${src}`);
     const size = Number(res.headers.get("content-length"));
     if (!size || size > VideoSource.MAX_BLOB_BYTES) {
-      ctrl.abort();
+      res.body.cancel();
       return src;
     }
-    const blob = await res.blob();
-    if (token !== this.token) return src;
-    this.blobUrl = URL.createObjectURL(blob);
-    return this.blobUrl;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      this.setLoading(true, received / size);
+    }
+    const type = (res.headers.get("content-type") || "video/mp4").split(";")[0];
+    pending.blobUrl = URL.createObjectURL(new Blob(chunks, { type }));
+    return pending.blobUrl;
   }
 
-  unload() {
-    if (this.abort) this.abort.abort();
-    this.abort = null;
-    if (this.vid) {
-      // detach handlers first: removing the element can fire stale events
-      const el = this.vid.elt;
-      el.onloadedmetadata = el.onloadeddata = el.onerror = null;
-      this.vid.remove();
-      this.vid = null;
+  swap(el, blobUrl) {
+    el.onloadedmetadata = el.onloadeddata = el.onseeked = el.onerror = null;
+    const vid = new p5.MediaElement(el, _renderer._pInst);
+    vid.width = el.videoWidth;
+    vid.height = el.videoHeight;
+    vid.loadedmetadata = true;
+    if (this.size) vid.size(...this.size());
+    vid.hide();
+
+    const old = this.vid;
+    const oldBlobUrl = this.blobUrl;
+    this.vid = vid;
+    this.blobUrl = blobUrl;
+    if (old) old.remove();
+    if (oldBlobUrl) URL.revokeObjectURL(oldBlobUrl);
+
+    this.setLoading(false);
+    el.play().catch(() => {});
+    this.onChange(vid);
+    this.onReady(vid);
+  }
+
+  cancelPending() {
+    const p = this.pending;
+    if (!p) return;
+    this.pending = null;
+    p.ctrl.abort();
+    if (p.el) {
+      p.el.onloadedmetadata = p.el.onloadeddata = p.el.onseeked = null;
+      p.el.onerror = null;
+      p.el.removeAttribute("src");
+      p.el.load();
+      p.el.remove();
     }
-    if (this.blobUrl) URL.revokeObjectURL(this.blobUrl);
-    this.blobUrl = null;
-    this.onChange(null);
+    if (p.blobUrl) URL.revokeObjectURL(p.blobUrl);
   }
 
   // true while `vid` is still the playing video (for async onReady work)
@@ -197,16 +229,34 @@ class VideoSource {
 
   next() {
     if (!this.urls.length) return;
+    this.retried = false;
     this.index = (this.index + 1) % this.urls.length;
     this.load();
   }
 
-  skip(token) {
-    if (token !== this.token) return;
+  skip() {
     // archive.org sometimes fails transiently: retry once
-    if (!this.retried) return this.load({ retry: true });
+    if (!this.retried) {
+      this.retried = true;
+      return this.load();
+    }
     this.failed++;
     if (this.failed < this.urls.length) this.next();
+    else this.setLoading(false);
+  }
+
+  setLoading(on, progress) {
+    if (!this.loadingEl) {
+      VideoSource.injectStyles();
+      this.loadingEl = document.createElement("div");
+      this.loadingEl.className = "vs-loading";
+      document.body.appendChild(this.loadingEl);
+    }
+    this.loadingEl.classList.toggle("on", on);
+    this.loadingEl.textContent =
+      progress === undefined
+        ? "loading"
+        : `loading ${Math.floor(progress * 100)}%`;
   }
 
   // --- playlist ----------------------------------------------------------
@@ -214,6 +264,7 @@ class VideoSource {
   play(url) {
     this.add(url);
     this.index = this.urls.indexOf(url);
+    this.retried = false;
     this.load();
   }
 
@@ -231,6 +282,7 @@ class VideoSource {
     this.urls = VideoSource.shuffle([...urls]);
     this.index = 0;
     this.failed = 0;
+    this.retried = false;
     this.load();
   }
 
@@ -346,7 +398,13 @@ class VideoSource {
         background: #111; color: white; border: 1px solid #444;
         font-family: monospace; font-size: 12px;
       }
-      video { display: none; }`;
+      video { display: none; }
+      .vs-loading {
+        position: fixed; right: 10px; bottom: 10px; z-index: 20;
+        padding: 3px 6px; background: rgba(0, 0, 0, 0.6); color: white;
+        font: 11px monospace; pointer-events: none; display: none;
+      }
+      .vs-loading.on { display: block; }`;
     document.head.appendChild(style);
   }
 
