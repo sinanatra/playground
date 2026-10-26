@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>`.-':_,^=;+!r</title>
+    <link rel="stylesheet" href="css/common.css" />
+    <script src="lib/p5.min.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+      const IMAGES = [
+        "media/sakamoto_1.jpg",
+        "media/sakamoto_2.jpg",
+        "media/sakamoto_3.jpg",
+        "media/sakamoto_4.jpg",
+        "media/sakamoto_5.jpg",
+        "media/sakamoto_6.jpg",
+      ];
+
+      const images = [];
+      let index = 0;
+      let scan = 0; // 0..1 across the screen
+      let dir = 1;
+      let sweepSeconds = 180;
+
+      function setup() {
+        pixelDensity(1);
+        createCanvas(windowWidth, windowHeight);
+        noSmooth(); // keep stretched pixels hard-edged
+        bindRange("sweep", sweepSeconds, (v) => (sweepSeconds = v));
+        load(index);
+      }
+
+      function load(i) {
+        if (images[i] !== undefined) return;
+        images[i] = null;
+        loadImage(
+          IMAGES[i],
+          (img) => {
+            images[i] = img;
+            load((i + 1) % IMAGES.length);
+          },
+          () => {
+            console.warn("image failed to load:", IMAGES[i]);
+            images[i] = false;
+          },
+        );
+      }
+
+      function nextIndex() {
+        for (let n = 1; n <= IMAGES.length; n++) {
+          const i = (index + n) % IMAGES.length;
+          if (images[i] !== false) return i;
+        }
+        return index;
+      }
+
+      function draw() {
+        if (images[index] === false) index = nextIndex();
+        const img = images[index];
+        if (!img) return background(0);
+
+        scan = constrain(
+          scan + (dir * deltaTime) / (sweepSeconds * 1000),
+          0,
+          1,
+        );
+        if (dir > 0 && scan === 1) {
+          const i = nextIndex();
+          load(i);
+          // wait at the edge until the next image is loaded
+          if (images[i]) {
+            index = i;
+            dir = -1;
+          }
+        } else if (dir < 0 && scan === 0) {
+          dir = 1;
+        }
+
+        drawDrift(images[index], floor(min(scan * width, width - 1)));
+      }
+
+      function drawDrift(img, x) {
+        const s = max(width / img.width, height / img.height);
+        const sw = width / s;
+        const sh = height / s;
+        const sx = (img.width - sw) / 2;
+        const sy = (img.height - sh) / 2;
+
+        image(img, 0, 0, width, height, sx, sy, sw, sh);
+        // one source column stretched from the left edge to the scan line
+        image(
+          img,
+          0,
+          0,
+          x + 1,
+          height,
+          floor(sx + (x / width) * sw),
+          sy,
+          1,
+          sh,
+        );
+      }
+
+      function mousePressed(e) {
+        if (e && e.target && e.target.tagName !== "CANVAS") return;
+        index = nextIndex();
+        load(index);
+        scan = 0;
+        dir = 1;
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+    </script>
+  </head>
+
+  <body>
+    <header>
+      <label for="sweep-slider">Sweep: <span id="sweep-value"></span>s</label>
+      <input type="range" id="sweep-slider" min="1" max="30" step="1" />
+    </header>
+  </body>
+</html>

@@ -1,28 +1,9 @@
-// Shared video playlist for the p5 sketches.
-//
-// Entries can be local files ("media/video_2.mp4"), archive.org pages
-// ("https://archive.org/details/ID"), bare archive.org ids, or direct video
-// urls. The playlist is editable from the page header and saved per page.
-//
-// archive.org's /download/ urls have no CORS headers, so the sketches couldn't
-// read their pixels (vid.get, VideoFrame, Vida). Its /cors/ endpoint serves
-// the same files with CORS, but without range requests, so videos aren't
-// seekable: for a random start they're downloaded whole and played as a blob.
-//
-// Usage (p5 global mode):
-//   const videos = new VideoSource({
-//     defaults: ["media/video_1.mp4", "https://archive.org/details/ID"],
-//     size: () => [windowWidth, windowHeight],
-//     onChange: (v) => (vid = v), // swapped in, already has a frame
-//     onReady: (v) => {},         // right after onChange
-//   });
-//   // in setup(), after createCanvas():
-//   videos.load();
+// Video playlist for the sketches: local files, archive.org pages/ids or urls.
+// archive.org videos go through its /cors/ endpoint so pixels stay readable.
 
 class VideoSource {
   static resolved = new Map();
 
-  // bigger files stream from the start instead of being downloaded whole
   static MAX_BLOB_BYTES = 200 * 1024 * 1024;
 
   constructor({
@@ -48,10 +29,6 @@ class VideoSource {
     if (ui) VideoSource.onDomReady(() => this.mountUI());
   }
 
-  // --- url parsing -------------------------------------------------------
-
-  // -> { id, file } for archive.org pages/ids, null for anything else.
-  // file is set for links to one file of an item: /details/ID/name.mp4
   static archiveItem(entry) {
     const m = entry.match(/archive\.org\/(?:details|embed)\/([^/?#]+)(?:\/([^?#]+))?/);
     if (m) {
@@ -63,7 +40,6 @@ class VideoSource {
     return null;
   }
 
-  // archive.org/download/ID/file and dnXXXX.archive.org/N/items/ID/file
   static corsUrl(url) {
     const m = url.match(
       /^https?:\/\/(?:[\w-]+\.)*archive\.org\/(?:download\/|\d+\/items\/)(.+)$/
@@ -93,8 +69,6 @@ class VideoSource {
     return url;
   }
 
-  // --- playback ----------------------------------------------------------
-
   async load() {
     const token = ++this.token;
     this.cancelPending();
@@ -115,7 +89,7 @@ class VideoSource {
       await this.whenReady(pending.el, pending.ctrl.signal);
       stale();
     } catch (e) {
-      if (token !== this.token) return; 
+      if (token !== this.token) return;
       console.warn("video failed to load:", entry, e);
       this.cancelPending();
       return this.skip();
@@ -140,7 +114,6 @@ class VideoSource {
     return el;
   }
 
-  // resolves once the element has a frame, at a random time if seekable
   whenReady(el, signal) {
     return new Promise((resolve, reject) => {
       signal.addEventListener("abort", () =>
@@ -161,7 +134,6 @@ class VideoSource {
     });
   }
 
-  // whole file as a blob url (seekable), or src itself if it's too big
   async download(src, pending) {
     const res = await fetch(src, { signal: pending.ctrl.signal });
     if (!res.ok) throw new Error(`${res.status} ${src}`);
@@ -222,7 +194,6 @@ class VideoSource {
     if (p.blobUrl) URL.revokeObjectURL(p.blobUrl);
   }
 
-  // true while `vid` is still the playing video (for async onReady work)
   isCurrent(vid) {
     return vid === this.vid;
   }
@@ -259,8 +230,6 @@ class VideoSource {
         : `loading ${Math.floor(progress * 100)}%`;
   }
 
-  // --- playlist ----------------------------------------------------------
-
   play(url) {
     this.add(url);
     this.index = this.urls.indexOf(url);
@@ -272,7 +241,6 @@ class VideoSource {
     const list = this.savedList();
     list.push(url);
     this.save(list);
-    // queue it right after the current video
     this.urls.splice(this.index + 1, 0, url);
   }
 
@@ -312,8 +280,6 @@ class VideoSource {
     } catch (e) {}
     if (this.listEl) this.listEl.value = this.defaults.join("\n");
   }
-
-  // --- header UI ---------------------------------------------------------
 
   mountUI() {
     VideoSource.injectStyles();
@@ -361,7 +327,7 @@ class VideoSource {
       if (url) this.add(url);
     });
     input.addEventListener("keydown", (e) => {
-      e.stopPropagation(); // don't trigger the sketches' keyPressed
+      e.stopPropagation();
       if (e.key === "Enter") $(".vs-play").click();
     });
     $(".vs-next").addEventListener("click", () => this.next());
@@ -407,8 +373,6 @@ class VideoSource {
       .vs-loading.on { display: block; }`;
     document.head.appendChild(style);
   }
-
-  // --- helpers -----------------------------------------------------------
 
   // p5 fires mousePressed for clicks anywhere, including the header controls
   static clickedCanvas(e) {

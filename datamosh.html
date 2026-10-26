@@ -1,41 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>`.-':_,^=;+!r</title>
-    <script src="p5.min.js"></script>
-    <script src="p5.sound.min.js"></script>
-    <script src="video-source.js"></script>
+    <link rel="stylesheet" href="css/common.css" />
+    <script src="lib/p5.min.js"></script>
+    <script src="lib/p5.sound.min.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/video-source.js"></script>
     <script>
-      let mic, fft, vid;
-      const videos = new VideoSource({
-        defaults: [
-          "https://archive.org/details/0792_Horsepower_M00251_03_31_16_00",
-        ],
-        storageKey: "datamosh-urls",
-        size: () => [windowWidth, windowHeight],
-        onChange: (v) => {
-          vid = v;
-          isVideoSwitching = true;
-          isFrameReady = false;
-        },
-        onReady: onVideoReady,
-      });
-      let switchInterval = 180000;
-      let lastSwitchTime = 0;
-      let lastPeakTime = 0;
-      let threshold = 50;
-      let encoder, decoder;
-      let isWebCodecsReady = false;
-      let ctx;
-      let videoCanvas, videoCtx;
-      let datamoshRepeats = 7;
-      let isVideoSwitching = false;
-      let isFrameReady = false;
-      let audioReactive = false;
-
-      let texts = [
+      const TEXTS = [
         "我用自己的血写下真理",
         "哪怕纸张拒绝，我的心仍要呐喊",
         "自由属于敢于说出的人",
@@ -45,20 +20,6 @@
         "决不在于",
         "维护真理者",
         "姿态的傲慢",
-
-        // "The power of truth",
-        // "never lies in",
-        // "the arrogant air",
-        // "of the guardians of truth",
-
-        // "As you prepare your breakfast, think of others",
-        // "As you conduct your wars, think of others",
-        // "As you pay your water bill, think of others",
-        // "As you return home, to your home, think of others",
-        // "As you sleep and count the stars, think of others",
-        // "As you liberate yourself in metaphor, think of others",
-        // "As you think of others far away, think of yourself",
-
         "وأنتَ تعدّ فطورك، فكّر بغيرك",
         "وأنتَ تخوض حروبك، فكّر بغيرك",
         "وأنتَ تسدّد فاتورة الماء، فكّر بغيرك",
@@ -67,35 +28,145 @@
         "وأنت تحرّر نفسك بالاستعارات، فكّر بغيرك",
         "وأنت تفكّر بالآخرين البعيدين، فكّر بنفسك",
       ];
+      const TEXT_SIZE = 64;
+      const PEAK_COOLDOWN_MS = 2000;
 
-      let showText = false;
+      let mic, fft, vid;
+      let ctx;
+      let videoCanvas, videoCtx;
+      let encoder, decoder;
+      let ready = false;
+      let audioReactive = false;
+      let threshold = 50;
+      let lastPeakTime = 0;
+      let datamoshRepeats = 7;
+
       let textValue = "";
-      let textStart = 0;
-      let textDuration = 0;
+      let textUntil = 0;
       let nextTextAt = 0;
-      let textWrapWidth = 0;
-      let textFontSize = 64;
+
+      const videos = new VideoSource({
+        defaults: [
+          "https://archive.org/details/0792_Horsepower_M00251_03_31_16_00",
+        ],
+        storageKey: "datamosh-urls",
+        size: () => [windowWidth, windowHeight],
+        onChange: (v) => {
+          vid = v;
+          ready = false;
+        },
+        onReady: onVideoReady,
+      });
 
       async function setup() {
-        colorMode(HSL, 360, 100, 100);
         createCanvas(windowWidth, windowHeight);
         ctx = canvas.getContext("2d");
         frameRate(30);
         textFont("Helvetica, sans-serif");
         textAlign(CENTER, CENTER);
         nextTextAt = millis() + random(1000, 4000);
+        bindRange("threshold", threshold, (v) => (threshold = v));
+        bindAudioToggle();
         await videos.load();
       }
 
-      function mousePressed(e) {
-        if (!VideoSource.clickedCanvas(e)) return;
-        switchVideo();
-        if (audioReactive && (!mic || !fft)) enableAudioReactive();
+      async function onVideoReady(v) {
+        const supported = await checkCodecSupport();
+        if (!videos.isCurrent(v) || !supported) return;
+        setupWebCodecs();
+        v.elt
+          .play()
+          .then(() => {
+            if (videos.isCurrent(v)) ready = true;
+          })
+          .catch(() => {});
       }
 
-      function switchVideo() {
-        videos.next();
-        lastSwitchTime = millis();
+      function draw() {
+        if (!vid || !ready) return;
+
+        updateRepeats();
+
+        if (videoCanvas) ctx.drawImage(videoCanvas, 0, 0, windowWidth, windowHeight);
+        drawText();
+
+        if (vid.elt.readyState === 4 && !vid.elt.paused && encoder.state === "configured") {
+          try {
+            const frame = new VideoFrame(vid.elt);
+            encoder.encode(frame, { keyFrame: false });
+            frame.close();
+          } catch (e) {}
+        }
+      }
+
+      function updateRepeats() {
+        if (audioReactive && fft) {
+          const spectrum = fft.analyze();
+          const peak = Math.max(...spectrum);
+          if (peak > threshold && millis() - lastPeakTime > PEAK_COOLDOWN_MS) {
+            datamoshRepeats = spectrum.indexOf(peak) >= 10 ? int(random(2, 6)) : 2;
+            lastPeakTime = millis();
+          }
+        } else if (millis() - lastPeakTime > random(3000, 8000)) {
+          datamoshRepeats = random() < 0.3 ? 2 : int(random(3, 10));
+          lastPeakTime = millis();
+        }
+      }
+
+      function drawText() {
+        const now = millis();
+        if (!textValue && now > nextTextAt) {
+          textValue = random(TEXTS);
+          textUntil = now + random(1200, 4000);
+        }
+        if (!textValue) return;
+        fill("red");
+        textSize(TEXT_SIZE);
+        text(textValue, width / 2, height / 2);
+        if (now >= textUntil) {
+          textValue = "";
+          nextTextAt = now + random(6000, 16000);
+        }
+      }
+
+      async function checkCodecSupport() {
+        const { supported } = await navigator.mediaCapabilities.decodingInfo({
+          type: "file",
+          video: {
+            contentType: 'video/webm; codecs="vp8"',
+            width: windowWidth,
+            height: windowHeight,
+            bitrate: 500000,
+            framerate: 30,
+          },
+        });
+        return supported;
+      }
+
+      function setupWebCodecs() {
+        if (encoder && encoder.state !== "closed") encoder.close();
+        if (decoder && decoder.state !== "closed") decoder.close();
+
+        videoCanvas = document.createElement("canvas");
+        videoCanvas.width = windowWidth;
+        videoCanvas.height = windowHeight;
+        videoCtx = videoCanvas.getContext("2d");
+
+        encoder = new VideoEncoder({ output: onEncodedChunk, error: () => {} });
+        encoder.configure({ codec: "vp8", width: windowWidth, height: windowHeight });
+        decoder = new VideoDecoder({ output: onDecodedFrame, error: () => {} });
+        decoder.configure({ codec: "vp8" });
+      }
+
+      function onEncodedChunk(chunk) {
+        if (decoder.state !== "configured") return;
+        for (let i = 0; i < datamoshRepeats; i++) decoder.decode(chunk);
+      }
+
+      function onDecodedFrame(frame) {
+        videoCtx.setTransform(-1, 0, 0, 1, videoCanvas.width, 0);
+        videoCtx.drawImage(frame, 0, 0, videoCanvas.width, videoCanvas.height);
+        frame.close();
       }
 
       async function enableAudioReactive() {
@@ -108,159 +179,28 @@
 
       function disableAudioReactive() {
         if (mic && mic.enabled) mic.stop();
-        mic = null;
-        fft = null;
+        mic = fft = null;
       }
 
-      async function onVideoReady(v) {
-        const isSupported = await checkCodecSupport();
-        if (!videos.isCurrent(v)) return;
-        if (isSupported) {
-          setupWebCodecs();
-          v.elt
-            .play()
-            .then(() => {
-              if (!videos.isCurrent(v)) return;
-              isWebCodecsReady = true;
-              isVideoSwitching = false;
-              isFrameReady = true;
-            })
-            .catch(() => {});
-        } else {
-          isVideoSwitching = false;
-        }
-      }
-
-      function draw() {
-        if (!vid || !isWebCodecsReady || isVideoSwitching || !isFrameReady)
-          return;
-
-        if (audioReactive && fft) {
-          let spectrum = fft.analyze();
-          let peak = Math.max(...spectrum);
-          let peakIndex = spectrum.indexOf(peak);
-          let bassEnergy = fft.getEnergy("bass");
-          let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 60, 180);
-          let speed = constrain(map(bpm, 60, 180, 0.1, 5), 1, 3);
-          let offset = 2000;
-          // vid.speed(1);
-          if (peak > threshold && millis() - lastPeakTime > offset) {
-            let direction = int(map(peakIndex, 0, 255, 1, 2));
-            if (peakIndex == 0) datamoshRepeats = 3;
-            if (peakIndex > 0 && peakIndex <= 2)
-              datamoshRepeats = int(random(2, 3));
-            if (peakIndex > 2 && peakIndex < 5) {
-              datamoshRepeats = int(random(2, 4));
-              direction = -direction;
-            }
-            if (peakIndex >= 10) datamoshRepeats = int(random(2, 6));
-            else datamoshRepeats = 2;
-            lastPeakTime = millis();
-          }
-        } else {
-          if (millis() - lastPeakTime > random(3000, 8000)) {
-            datamoshRepeats = int(random(3, 10));
-            if (random() < 0.3) datamoshRepeats = 2;
-            lastPeakTime = millis();
-          }
-          // vid.speed(1);
-        }
-
-        if (millis() > nextTextAt && !showText) {
-          textValue = texts[int(random(texts.length))];
-          textDuration = random(1200, 4000);
-          textStart = millis();
-          showText = true;
-        }
-
-        if (videoCanvas) {
-          ctx.globalAlpha = 1;
-          ctx.drawImage(videoCanvas, 0, 0, windowWidth, windowHeight);
-        }
-
-        if (showText) {
-          fill("red");
-          textSize(textFontSize);
-          text(textValue, width / 2, height / 2);
-          if (millis() - textStart >= textDuration) {
-            showText = false;
-            nextTextAt = millis() + random(6000, 16000);
-          }
-        }
-
-        // if (frameCount % 120 === 0) datamoshRepeats = 1;
-
-        if (
-          vid.elt.readyState === 4 &&
-          !vid.elt.paused &&
-          encoder &&
-          encoder.state === "configured"
-        ) {
-          try {
-            const frame = new VideoFrame(vid.elt);
-            encoder.encode(frame, { keyFrame: false });
-            frame.close();
-          } catch (e) {}
-        }
-      }
-
-      async function checkCodecSupport() {
-        const config = {
-          type: "file",
-          video: {
-            contentType: 'video/webm; codecs="vp8"',
-            width: windowWidth,
-            height: windowHeight,
-            bitrate: 500000,
-            framerate: 30,
-          },
-        };
-        const mediaCapabilities =
-          await navigator.mediaCapabilities.decodingInfo(config);
-        return mediaCapabilities.supported;
-      }
-
-      function setupWebCodecs() {
-        videoCanvas = document.createElement("canvas");
-        videoCanvas.width = windowWidth;
-        videoCanvas.height = windowHeight;
-        videoCtx = videoCanvas.getContext("2d");
-        encoder = new VideoEncoder({
-          output: handleEncodedChunk,
-          error: () => {},
+      function bindAudioToggle() {
+        const toggle = document.getElementById("audio-toggle");
+        const label = document.getElementById("audio-label");
+        const render = () =>
+          (label.textContent = `Audio reactive: ${audioReactive ? "on" : "off"}`);
+        toggle.checked = audioReactive;
+        render();
+        toggle.addEventListener("change", async () => {
+          audioReactive = toggle.checked;
+          render();
+          if (audioReactive) await enableAudioReactive();
+          else disableAudioReactive();
         });
-        encoder.configure({
-          codec: "vp8",
-          width: windowWidth,
-          height: windowHeight,
-        });
-        decoder = new VideoDecoder({
-          output: (f) => handleDecodedFrame(f),
-          error: () => {},
-        });
-        decoder.configure({ codec: "vp8" });
       }
 
-      function handleEncodedChunk(chunk) {
-        if (decoder && decoder.state === "configured") {
-          for (let i = 0; i < datamoshRepeats; i++) decoder.decode(chunk);
-        }
-      }
-
-      function handleDecodedFrame(frame) {
-        if (!videoCtx) {
-          frame.close();
-          return;
-        }
-        videoCtx.globalAlpha = 1;
-        videoCtx.setTransform(1, 0, 0, 1, 0, 0);
-        videoCtx.clearRect(0, 0, windowWidth, windowHeight);
-        videoCtx.save();
-        videoCtx.translate(windowWidth, 0);
-        videoCtx.scale(-1, 1);
-        videoCtx.drawImage(frame, 0, 0, windowWidth, windowHeight);
-        videoCtx.restore();
-        frame.close();
+      function mousePressed(e) {
+        if (!VideoSource.clickedCanvas(e)) return;
+        videos.next();
+        if (audioReactive && !fft) enableAudioReactive();
       }
 
       function windowResized() {
@@ -270,88 +210,18 @@
           videoCanvas.width = windowWidth;
           videoCanvas.height = windowHeight;
         }
-        if (showText) computeTextLayout(textValue);
       }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        document
-          .getElementById("threshold-slider")
-          .addEventListener("input", (e) => {
-            threshold = parseInt(e.target.value, 10);
-            document.getElementById("threshold-value").textContent = threshold;
-          });
-        const toggle = document.getElementById("audio-toggle");
-        const label = document.getElementById("audio-label");
-        toggle.checked = false;
-        label.textContent = "Audio reactive: off";
-        toggle.addEventListener("change", async (e) => {
-          audioReactive = e.target.checked;
-          label.textContent = audioReactive
-            ? "Audio reactive: on"
-            : "Audio reactive: off";
-          if (audioReactive) await enableAudioReactive();
-          else disableAudioReactive();
-        });
-      });
     </script>
   </head>
 
-  <header>
-    <span id="controls">
-      <label id="audio-label" for="audio-toggle" style="color: white"></label>
+  <body>
+    <header>
+      <label id="audio-label" for="audio-toggle"></label>
       <input type="checkbox" id="audio-toggle" />
-      <label for="threshold-slider" style="color: white"
-        >Threshold: <span id="threshold-value">50</span></label
-      >
-      <input
-        type="range"
-        id="threshold-slider"
-        min="10"
-        max="2000"
-        step="1"
-        value="150"
-      />
-    </span>
-  </header>
-
-  <body></body>
-
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-    header {
-      background: black;
-      color: white;
-      padding: 10px 0;
-      position: absolute;
-      width: 100%;
-      opacity: 0;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      z-index: 10;
-      flex-wrap: wrap;
-    }
-    header:hover {
-      opacity: 1;
-    }
-    header a {
-      margin: 0 10px;
-      color: white;
-      text-decoration: none;
-    }
-    #controls {
-      display: inline-flex;
-      gap: 12px;
-      align-items: center;
-      padding-left: 10px;
-    }
-    canvas {
-      display: block;
-    }
-  </style>
+      <label for="threshold-slider"
+        >Threshold: <span id="threshold-value"></span
+      ></label>
+      <input type="range" id="threshold-slider" min="0" max="255" step="1" />
+    </header>
+  </body>
 </html>

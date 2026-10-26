@@ -1,305 +1,154 @@
-<!DOCTYPE html>
-<html lang="it">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>`.-':_,^=;+!r</title>
-    <script src="p5.min.js"></script>
-    <script src="p5.sound.min.js"></script>
-  </head>
-  <body>
+    <link rel="stylesheet" href="css/common.css" />
+    <script src="lib/p5.min.js"></script>
+    <script src="js/common.js"></script>
     <script>
-      let pg, maskW, maskH, field, fieldW, fieldH, tmpG;
+      const TEXTS = [
+        "Hass", "Geld", "Gott", "Chef", "Plan", "Ziel", "Schlaf", "Traum",
+        "Mitleid", "Friede", "Vertrauen", "Glück", "Licht", "System", "Morgen",
+        "Heimat", "Leben", "Tod", "Angst", "Körper", "Seele", "Liebe", "Zeit",
+        "Hoffnung", "Schmerz", "Sinn", "Vergangenheit", "Zukunft", "Rettung",
+        "Grenze", "König", "Kampf", "Himmel", "Hölle", "Signal", "Ort", "Weg",
+        "Atem", "Rausch", "Blick", "Klang", "Trauer", "Erinnerung", "Mensch",
+        "Feuer", "Stille", "Wunder", "Ende",
+      ].flatMap((word) => ["Kein", word]);
 
-      let texts = [
-        "Kein",
-        "Hass",
-        "Kein",
-        "Geld",
-        "Kein",
-        "Gott",
-        "Kein",
-        "Chef",
-        "Kein",
-        "Plan",
-        "Kein",
-        "Ziel",
-        "Kein",
-        "Schlaf",
-        "Kein",
-        "Traum",
-        "Kein",
-        "Mitleid",
-        "Kein",
-        "Friede",
-        "Kein",
-        "Vertrauen",
-        "Kein",
-        "Glück",
-        "Kein",
-        "Licht",
-        "Kein",
-        "System",
-        "Kein",
-        "Morgen",
-        "Kein",
-        "Heimat",
-        "Kein",
-        "Leben",
-        "Kein",
-        "Tod",
-        "Kein",
-        "Angst",
-        "Kein",
-        "Körper",
-        "Kein",
-        "Seele",
-        "Kein",
-        "Liebe",
-        "Kein",
-        "Zeit",
-        "Kein",
-        "Hoffnung",
-        "Kein",
-        "Schmerz",
-        "Kein",
-        "Sinn",
-        "Kein",
-        "Vergangenheit",
-        "Kein",
-        "Zukunft",
-        "Kein",
-        "Rettung",
-        "Kein",
-        "Grenze",
-        "Kein",
-        "König",
-        "Kein",
-        "Kampf",
-        "Kein",
-        "Himmel",
-        "Kein",
-        "Hölle",
-        "Kein",
-        "Signal",
-        "Kein",
-        "Ort",
-        "Kein",
-        "Weg",
-        "Kein",
-        "Atem",
-        "Kein",
-        "Rausch",
-        "Kein",
-        "Blick",
-        "Kein",
-        "Klang",
-        "Kein",
-        "Trauer",
-        "Kein",
-        "Erinnerung",
-        "Kein",
-        "Mensch",
-        "Kein",
-        "Feuer",
-        "Kein",
-        "Stille",
-        "Kein",
-        "Wunder",
-        "Kein",
-        "Ende",
-      ];
+      const STRIPE = 15;
+      const SPEED = 2;
 
+      let mask, small;
+      let field, fieldW, fieldH;
       let textIndex = 0;
-      let palettes = [
-        ["white", "black"],
-        ["blue", "red"],
-        ["yellow", "purple"],
-        ["cyan", "orangered"],
-        ["gold", "mediumblue"],
-        ["orange", "darkviolet"],
-        ["springgreen", "red"],
-        ["mediumorchid", "yellow"],
-        ["dodgerblue", "magenta"],
-        ["aquamarine", "indigo"],
-        ["pink", "blue"],
-        ["#9941FF", "lime"],
-        ["#FF4701", "#FFFF04"],
-        ["#222", "#111"],
-      ];
-      let paletteIndex = 0;
-      let stripe = 15;
+      let paletteIndex = 2;
       let strengthPct = 0.08;
       let strength = 1;
       let phase = 0;
-      let speed = 2;
       let step = 5;
-      let repeat = 4;
+      let blurRadius = 4;
 
       function setup() {
-        // pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
         noStroke();
         buildMask();
       }
-      function windowResized() {
-        resizeCanvas(windowWidth, windowHeight);
-        buildMask();
-      }
+
       function buildMask() {
-        strength = Math.min(width, height) * strengthPct;
-        maskW = width;
-        maskH = height;
-        pg = createGraphics(maskW, maskH);
-        pg.pixelDensity(1);
-        pg.clear();
-        // pg.textFont("Courier New");
-        pg.textAlign(CENTER, CENTER);
-        pg.textStyle(BOLD);
-        let s = Math.min(maskW, maskH) * 0.7;
-        pg.textSize(s);
-        let txt = texts[textIndex % texts.length];
-        while (pg.textWidth(txt) > maskW * 0.86) (s *= 0.96), pg.textSize(s);
-        pg.fill(255);
-        pg.text(txt, maskW * 0.5, maskH * 0.5);
+        strength = min(width, height) * strengthPct;
+
+        mask?.remove();
+        mask = createGraphics(width, height);
+        mask.pixelDensity(1);
+        mask.textAlign(CENTER, CENTER);
+        mask.textStyle(BOLD);
+        mask.fill(255);
+
+        const txt = TEXTS[textIndex % TEXTS.length];
+        let size = min(width, height) * 0.7;
+        mask.textSize(size);
+        while (mask.textWidth(txt) > width * 0.86) mask.textSize((size *= 0.96));
+        mask.text(txt, width * 0.5, height * 0.5);
+
         buildField();
       }
+
       function buildField() {
-        fieldW = Math.max(256, Math.floor(width * 0.35));
-        fieldH = Math.max(256, Math.floor(height * 0.35));
-        tmpG = createGraphics(fieldW, fieldH);
-        tmpG.pixelDensity(1);
-        tmpG.clear();
-        tmpG.image(pg, 0, 0, fieldW, fieldH);
-        tmpG.loadPixels();
+        fieldW = max(256, floor(width * 0.35));
+        fieldH = max(256, floor(height * 0.35));
+
+        small?.remove();
+        small = createGraphics(fieldW, fieldH);
+        small.pixelDensity(1);
+        small.image(mask, 0, 0, fieldW, fieldH);
+        small.loadPixels();
+
         field = new Float32Array(fieldW * fieldH);
-        for (let i = 0; i < fieldW * fieldH; i++)
-          field[i] = tmpG.pixels[i * 4 + 3] / 255;
-        blur1d(field, fieldW, fieldH, repeat, true);
-        blur1d(field, fieldW, fieldH, repeat, false);
+        for (let i = 0; i < field.length; i++)
+          field[i] = small.pixels[i * 4 + 3] / 255;
+        boxBlur(field, fieldW, fieldH, blurRadius, true);
+        boxBlur(field, fieldW, fieldH, blurRadius, false);
       }
-      function blur1d(a, w, h, r, hz) {
-        let out = new Float32Array(a.length);
-        if (hz) {
-          for (let y = 0; y < h; y++) {
-            let sum = 0;
-            for (let x = -r; x <= r; x++) {
-              let xi = Math.min(w - 1, Math.max(0, x));
-              sum += a[y * w + xi];
-            }
-            for (let x = 0; x < w; x++) {
-              out[y * w + x] = sum / (r * 2 + 1);
-              let x0 = x - r,
-                x1 = x + r + 1;
-              sum -= a[y * w + (x0 >= 0 ? x0 : 0)];
-              sum += a[y * w + (x1 < w ? x1 : w - 1)];
-            }
-          }
-        } else {
-          for (let x = 0; x < w; x++) {
-            let sum = 0;
-            for (let y = -r; y <= r; y++) {
-              let yi = Math.min(h - 1, Math.max(0, y));
-              sum += a[yi * w + x];
-            }
-            for (let y = 0; y < h; y++) {
-              out[y * w + x] = sum / (r * 2 + 1);
-              let y0 = y - r,
-                y1 = y + r + 1;
-              sum -= a[(y0 >= 0 ? y0 : 0) * w + x];
-              sum += a[(y1 < h ? y1 : h - 1) * w + x];
-            }
+
+      function boxBlur(a, w, h, r, horizontal) {
+        const [lines, len, lineStride, stride] = horizontal
+          ? [h, w, w, 1]
+          : [w, h, 1, w];
+        const out = new Float32Array(a.length);
+        for (let l = 0; l < lines; l++) {
+          const base = l * lineStride;
+          const at = (i) => a[base + Math.min(len - 1, Math.max(0, i)) * stride];
+          let sum = 0;
+          for (let i = -r; i <= r; i++) sum += at(i);
+          for (let i = 0; i < len; i++) {
+            out[base + i * stride] = sum / (r * 2 + 1);
+            sum += at(i + r + 1) - at(i - r);
           }
         }
         a.set(out);
       }
+
       function sampleField(px, py) {
-        let u = (px / width) * fieldW;
-        let v = (py / height) * fieldH;
-        let x0 = floor(u),
-          y0 = floor(v);
-        let x1 = min(fieldW - 1, x0 + 1),
-          y1 = min(fieldH - 1, y0 + 1);
-        let tx = u - x0,
-          ty = v - y0;
-        let i00 = field[y0 * fieldW + x0],
-          i10 = field[y0 * fieldW + x1],
-          i01 = field[y1 * fieldW + x0],
-          i11 = field[y1 * fieldW + x1];
+        const u = (px / width) * fieldW;
+        const v = (py / height) * fieldH;
+        const x0 = floor(u);
+        const y0 = floor(v);
+        const x1 = min(fieldW - 1, x0 + 1);
+        const y1 = min(fieldH - 1, y0 + 1);
+        const tx = u - x0;
+        const ty = v - y0;
         return (
-          i00 * (1 - tx) * (1 - ty) +
-          i10 * tx * (1 - ty) +
-          i01 * (1 - tx) * ty +
-          i11 * tx * ty
+          field[y0 * fieldW + x0] * (1 - tx) * (1 - ty) +
+          field[y0 * fieldW + x1] * tx * (1 - ty) +
+          field[y1 * fieldW + x0] * (1 - tx) * ty +
+          field[y1 * fieldW + x1] * tx * ty
         );
       }
+
       function draw() {
-        let dt = deltaTime / 100;
-        phase += dt * speed;
+        phase += (deltaTime / 100) * SPEED;
 
         if (frameCount % 60 === 0) {
-          //   stripe = random(5, 22);
-          textIndex = (textIndex + 1) % texts.length;
+          textIndex = (textIndex + 1) % TEXTS.length;
           strengthPct = random(0.01, 0.1);
-          strength = random(1, 10);
-          repeat = int(random(4, 10));
+          blurRadius = int(random(4, 10));
           step = random(3, 10);
           buildMask();
         }
 
-        // if (frameCount % 300 === 0) {
-        //   //   step = random(3, 8);
-        //   paletteIndex = (paletteIndex + 1) % palettes.length;
-        //   buildMask();c
-        // }
+        const [c1, c2] = PALETTES[paletteIndex % PALETTES.length].map((c) =>
+          color(c)
+        );
+        const wave = STRIPE * sin(phase * 0.1);
 
-        let p = palettes[paletteIndex % palettes.length];
-        let c1 = color(p[0]),
-          c2 = color(p[1]);
         background(0);
         for (let y = 0; y < height; y += step) {
           for (let x = 0; x < width; x += step) {
-            let val = sampleField(x, y);
-            let off = strength * (val - 0.5);
-            let wy = y + off;
-            let band = floor((wy + stripe * sin(phase * 0.1)) * (1 / stripe));
-
+            const off = strength * (sampleField(x, y) - 0.5);
+            const band = floor((y + off + wave) / STRIPE);
             fill((band & 1) === 0 ? c1 : c2);
             rect(x, y, step, step);
           }
         }
       }
+
       function keyPressed() {
         if (key === " ") {
-          textIndex = (textIndex + 1) % texts.length;
+          textIndex = (textIndex + 1) % TEXTS.length;
           buildMask();
         }
-        if (key === "c") {
-          paletteIndex = (paletteIndex + 1) % palettes.length;
-          buildMask();
-        }
-        if (key === "r") {
-          window.location.href = random([
-            "moiree.html",
-            "bolo.html",
-            "text.html",
-            "ribbon.html",
-            "barcode.html",
-            "vol.html",
-            "matrix.html",
-            "ascii.html",
-          ]);
-        }
+        if (key === "c") paletteIndex = (paletteIndex + 1) % PALETTES.length;
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        buildMask();
       }
     </script>
     <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        background: #000;
-        overflow: hidden;
-      }
       canvas {
         position: absolute;
         left: 0;
@@ -307,5 +156,7 @@
         filter: blur(1px) contrast(50);
       }
     </style>
-  </body>
+  </head>
+
+  <body></body>
 </html>

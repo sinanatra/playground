@@ -1,153 +1,99 @@
-<!DOCTYPE html>
-<html lang="it">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>`.-':_,^=;+!r</title>
-    <script src="p5.min.js"></script>
-    <script src="p5.sound.min.js"></script>
+    <link rel="stylesheet" href="css/common.css" />
+    <script src="lib/p5.min.js"></script>
+    <script src="lib/p5.sound.min.js"></script>
+    <script src="js/common.js"></script>
     <script>
-      let mic, fft;
+      const PALETTE_HOLD_MS = 5000;
+
+      let fft;
       let drift = 0;
       let driftV = 0.004;
       let seed = 0;
       let grid = 200;
       let variance = 1000;
       let useColor = false;
-
-      let palettes = [
-        ["blue", "red"],
-        ["yellow", "purple"],
-        ["white", "black"],
-        ["cyan", "orangered"],
-        ["gold", "mediumblue"],
-        ["orange", "darkviolet"],
-        ["springgreen", "red"],
-        ["mediumorchid", "yellow"],
-        ["dodgerblue", "magenta"],
-        ["aquamarine", "indigo"],
-        ["pink", "blue"],
-        ["#9941FF", "lime"],
-        ["#FF4701", "#FFFF04"],
-        ["#222", "#111"],
-      ];
-
       let paletteIndex = 0;
       let lastPaletteSwitch = 0;
-      let paletteHoldMs = 5000;
 
       function setup() {
         pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
         rectMode(CENTER);
         noStroke();
-        userStartAudio();
-        mic = new p5.AudioIn();
-        mic.start();
-        fft = new p5.FFT(0.85, 512);
-        fft.setInput(mic);
-      }
-
-      function windowResized() {
-        resizeCanvas(windowWidth, windowHeight);
+        fft = startMic(0.85, 512).fft;
       }
 
       function draw() {
         background(0);
-        const a = fft.getEnergy("bass") / 255;
-        const m = fft.getEnergy("mid") / 255;
-        const h = fft.getEnergy("treble") / 255;
 
-        drift += driftV + 0.016 * h;
-        seed += 0.001 + 0.004 * m;
+        fft.analyze();
+        const bass = fft.getEnergy("bass") / 255;
+        const mid = fft.getEnergy("mid") / 255;
+        const treble = fft.getEnergy("treble") / 255;
 
-        // grid = 300
+        drift += driftV + 0.016 * treble;
+        seed += 0.001 + 0.004 * mid;
+
         if (frameCount % 40 === 0) grid = random(100, 300);
         if (frameCount % 60 === 0) variance = random(100, 3000);
         if (frameCount % 12 === 0) driftV = random(0.1, 1.0);
 
+        const [dark, light] = useColor
+          ? PALETTES[paletteIndex % PALETTES.length].map((c) => color(c))
+          : [color(0), color(255)];
         const cw = width / grid;
         const ch = height / grid;
         const t = millis() * 0.0012;
 
         for (let j = 0; j < grid; j++) {
           for (let i = 0; i < grid; i++) {
-            let x = i + 0.5;
-            let y = j + 0.5;
-            let nx = x / grid - 0.5;
-            let ny = y / grid - 0.5;
-            let r = sqrt(nx * nx + ny * ny);
-            let th = atan2(ny, nx);
-            let w =
+            const nx = (i + 0.5) / grid - 0.5;
+            const ny = (j + 0.5) / grid - 0.5;
+            const r = sqrt(nx * nx + ny * ny);
+            const th = atan2(ny, nx);
+            const w =
               sin(r * variance + drift * driftV + t * 2.0) +
               sin(th * variance + t * 1.4) +
               sin((nx + ny) * 36.0 + seed * 8.0);
-            let v = constrain(0.5 + 0.5 * w, 0, 1);
-            let k = ((i + j) & 1) === 0 ? v : 1.0 - v;
+            const v = constrain(0.5 + 0.5 * w, 0, 1);
+            const k = ((i + j) & 1) === 0 ? v : 1.0 - v;
 
-            if (useColor) {
-              let p = palettes[paletteIndex % palettes.length];
-              let c1 = color(p[0]);
-              let c2 = color(p[1]);
-              let shade = k < 0.5 ? c1 : c2;
-              fill(shade);
-            } else {
-              let shade = k < 0.5 ? 0 : 255;
-              fill(shade);
-            }
-
+            fill(k < 0.5 ? dark : light);
             rect(i * cw + cw * 0.5, j * ch + ch * 0.5, cw + 1, ch + 1);
           }
         }
 
         push();
         blendMode(ADD);
-        fill(255, 16 + 24 * a);
-        rect(width * 0.5, height * 0.5, width, 1);
-        rect(width * 0.5, height * 0.25, width, 1);
-        rect(width * 0.5, height * 0.75, width, 1);
+        fill(255, 16 + 24 * bass);
+        for (const y of [0.25, 0.5, 0.75])
+          rect(width * 0.5, height * y, width, 1);
         pop();
 
-        if (millis() - lastPaletteSwitch > paletteHoldMs) {
-          paletteIndex++;
-          lastPaletteSwitch = millis();
-        }
+        if (millis() - lastPaletteSwitch > PALETTE_HOLD_MS) nextPalette();
+      }
+
+      function nextPalette() {
+        paletteIndex++;
+        lastPaletteSwitch = millis();
       }
 
       function keyPressed() {
-        if (key === "c") {
-          paletteIndex++;
-          lastPaletteSwitch = millis();
-        }
-        if (key === "b") {
-          useColor = !useColor;
-        }
+        if (key === "c") nextPalette();
+        if (key === "b") useColor = !useColor;
+      }
 
-        if (key === "r") {
-          window.location.href = random([
-            "moiree.html",
-            "bolo.html",
-            "text.html",
-            "ribbon.html",
-            "barcode.html",
-            "vol.html",
-            "matrix.html",
-            "ascii.html",
-          ]);
-        }
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
       }
     </script>
   </head>
-  <style>
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      overflow: hidden;
-    }
-    canvas {
-      display: block;
-    }
-  </style>
+
+  <body></body>
 </html>

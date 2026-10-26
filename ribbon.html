@@ -1,174 +1,112 @@
-<!DOCTYPE html>
-<html lang="it">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>`.-':_,^=;+!r</title>
-    <script src="p5.min.js"></script>
-  </head>
-  <body>
+    <link rel="stylesheet" href="css/common.css" />
+    <script src="lib/p5.min.js"></script>
+    <script src="js/common.js"></script>
     <script>
+      const COLORS = ["#FADA15", "#f64949", "#CCB16A", "#B3AC9A", "#B2CAF8", "#9FD389"];
+      const STEP = 4;
+
       let colorIndex = 0;
       let cols = 5;
       let linesPerCol = 30;
       let stripeW;
-      let foldYs = [],
-        radii = [],
-        wraps = [],
-        revealSpeeds = [],
-        swayAmp = [],
-        swayFreq = [],
-        startTimes = [],
-        vertNoiseAmp = [],
-        curlDir = [],
-        highlightIdx = [],
-        shrinkRates = [];
-      let step = 2;
-      let colors = [
-        "#FADA15",
-        "#f64949",
-        "#CCB16A",
-        "#B3AC9A",
-        "#B2CAF8",
-        "#9FD389",
-      ];
-      let currentColor = colors[0];
+      let ribbons = [];
 
       function setup() {
-        createCanvas(windowWidth, windowHeight);
         pixelDensity(1);
-        initParams();
+        createCanvas(windowWidth, windowHeight);
         noFill();
         strokeCap(SQUARE);
+        initRibbons();
       }
 
-      function windowResized() {
-        resizeCanvas(windowWidth, windowHeight);
-        initParams();
-      }
-
-      function initParams(vN = 10) {
+      function initRibbons(vNoise = 10) {
         stripeW = width / (cols * linesPerCol);
-        for (let i = 0; i < cols; i++) {
-          foldYs[i] = map(i, 0, cols - 1, height * 0.9, height * 0.1);
-          radii[i] = random(40, 360);
-          wraps[i] = random(2.0, 5.0);
-          revealSpeeds[i] = random(120, 160);
-          swayAmp[i] = random(10, 100);
-          swayFreq[i] = 0.1;
-          vertNoiseAmp[i] = vN;
-          startTimes[i] = millis() + i * 100;
-          curlDir[i] = random([1, -1]);
-          highlightIdx[i] = int(random(linesPerCol));
-          shrinkRates[i] = random(0.6, 0.1);
-        }
+        ribbons = Array.from({ length: cols }, (_, i) => ({
+          foldY: map(i, 0, cols - 1, height * 0.9, height * 0.1),
+          radius: random(40, 360),
+          wrap: random(2.0, 5.0),
+          revealSpeed: random(120, 160),
+          swayAmp: random(10, 100),
+          swayFreq: 0.1,
+          vNoise,
+          start: millis() + i * 100,
+          curl: random([1, -1]),
+          highlight: int(random(linesPerCol)),
+          shrink: random(0.6, 0.1),
+        }));
       }
 
       function smoothstep(e0, e1, x) {
-        let t = constrain((x - e0) / (e1 - e0), 0, 1);
+        const t = constrain((x - e0) / (e1 - e0), 0, 1);
         return t * t * (3 - 2 * t);
       }
 
-      function pathPoint(baseX, foldY, radius, s, amp, freq, vnoise, ci) {
-        if (s <= foldY) return { x: baseX, y: s };
-        let a = (s - foldY) / radius;
-        let k = smoothstep(0, 0.6, a);
-        let loops = a / TWO_PI;
-        let rr = max(4, radius * (1 - shrinkRates[ci] * loops));
-        let n =
-          sin(a * freq * 0.5 + ci) * vnoise * noise(a * 0.15, ci * 0.2) * k;
-        let x =
-          baseX + curlDir[ci] * k * (rr * (1 - cos(a)) + amp * sin(a * freq));
-        let y = foldY + rr * sin(a) - n * 0.1;
-        return { x, y };
+      function pathPoint(baseX, rb, ci, s) {
+        if (s <= rb.foldY) return { x: baseX, y: s };
+        const a = (s - rb.foldY) / rb.radius;
+        const k = smoothstep(0, 0.6, a);
+        const rr = max(4, rb.radius * (1 - rb.shrink * (a / TWO_PI)));
+        const n =
+          sin(a * rb.swayFreq * 0.5 + ci) * rb.vNoise * noise(a * 0.15, ci * 0.2) * k;
+        return {
+          x: baseX + rb.curl * k * (rr * (1 - cos(a)) + rb.swayAmp * sin(a * rb.swayFreq)),
+          y: rb.foldY + rr * sin(a) - n * 0.1,
+        };
       }
 
-      function pathLenMax(foldY, radius, wrap) {
-        return foldY + radius * wrap * TWO_PI;
-      }
+      function drawStripe(i, ci, progress) {
+        const rb = ribbons[ci];
+        const baseX = (i + 0.5) * stripeW;
+        const end = constrain(progress, 0, rb.foldY + rb.radius * rb.wrap * TWO_PI);
+        const local = i % linesPerCol;
 
-      function drawStripe(i, ci, prog) {
-        let baseX = (i + 0.5) * stripeW;
-        let foldY = foldYs[ci];
-        let radius = radii[ci];
-        let wrap = wraps[ci];
-        let amp = swayAmp[ci];
-        let freq = swayFreq[ci];
-        let vnoise = vertNoiseAmp[ci];
-        let maxS = pathLenMax(foldY, radius, wrap);
-        let sEnd = constrain(prog, 0, maxS);
-        let local = i % linesPerCol;
-        let cVal =
-          i % 2 === 0
-            ? local === highlightIdx[ci]
-              ? currentColor
-              : "#ffffff"
-            : 0;
-        stroke(cVal);
+        stroke(i % 2 ? 0 : local === rb.highlight ? COLORS[colorIndex] : 255);
         strokeWeight(stripeW);
         beginShape();
-        for (let s = 0; s <= sEnd; s += step) {
-          let p = pathPoint(baseX, foldY, radius, s, amp, freq, vnoise, ci);
+        for (let s = 0; s <= end; s += STEP) {
+          const p = pathPoint(baseX, rb, ci, s);
           if (p.y <= height + 100) vertex(p.x, p.y);
         }
         endShape();
       }
 
       function draw() {
-        step = 4;
         background(0);
+
         if (frameCount % 1000 === 0) {
           cols = int(random(3, 20));
           linesPerCol = int(random(10, 30));
-          colorIndex = (colorIndex + 1) % colors.length;
-          currentColor = colors[colorIndex];
-          let vN = random(10, 100);
-          initParams(vN);
+          colorIndex = (colorIndex + 1) % COLORS.length;
+          initRibbons(random(10, 100));
         }
-        let now = millis();
+
+        const now = millis();
         for (let c = 0; c < cols; c++) {
-          let elapsed = max(0, now - startTimes[c]);
-          let prog = (elapsed / 1000) * revealSpeeds[c];
-          let start = c * linesPerCol;
-          let end = start + linesPerCol;
-          for (let i = start; i < end; i++) {
-            drawStripe(i, c, prog);
-          }
+          const progress = (max(0, now - ribbons[c].start) / 1000) * ribbons[c].revealSpeed;
+          for (let i = c * linesPerCol; i < (c + 1) * linesPerCol; i++)
+            drawStripe(i, c, progress);
         }
       }
 
       function keyPressed() {
         if (key === "c") {
-          colorIndex = (colorIndex + 1) % colors.length;
-          currentColor = colors[colorIndex];
-          for (let i = 0; i < cols; i++)
-            highlightIdx[i] = int(random(linesPerCol));
+          colorIndex = (colorIndex + 1) % COLORS.length;
+          for (const rb of ribbons) rb.highlight = int(random(linesPerCol));
         }
-        if (key === "r") {
-          window.location.href = random([
-            "moiree.html",
-            "bolo.html",
-            "text.html",
-            "ribbon.html",
-            "barcode.html",
-            "vol.html",
-            "matrix.html",
-            "ascii.html",
-          ]);
-        }
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        initRibbons();
       }
     </script>
-    <style>
-      html,
-      body {
-        margin: 0;
-        height: 100%;
-        background: #000;
-        overflow: hidden;
-      }
-      canvas {
-        display: block;
-      }
-    </style>
-  </body>
+  </head>
+
+  <body></body>
 </html>

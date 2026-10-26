@@ -1,234 +1,104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>`.-':_,^=;+!r</title>
-    <script src="p5.min.js"></script>
-    <script src="p5.sound.min.js"></script>
-    <script src="video-source.js"></script>
+    <link rel="stylesheet" href="css/common.css" />
+    <script src="lib/p5.min.js"></script>
+    <script src="lib/p5.sound.min.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/video-source.js"></script>
     <script>
-      let mic, fft, vid;
+      const CLEAR_MS = 250 * 1000;
+      const DIFF_THRESHOLD = 80;
+
+      let fft, vid;
+      let graphics;
+      let prevFrame;
+      let lastClear = 0;
+
       const videos = new VideoSource({
-        defaults: [
-          "media/video_1.mp4",
-          "media/video_2.mp4",
-          "media/video_3.mp4",
-          "media/video_4.mp4",
-          "media/video_5.mp4",
-          "media/video_6.mp4",
-          "media/video_7.mp4",
-          "media/video_8.mp4",
-          "media/video_9.mp4",
-          "media/video_10.mp4",
-        ],
+        defaults: Array.from({ length: 10 }, (_, i) => `media/video_${i + 1}.mp4`),
         size: () => [windowWidth, windowHeight],
         onChange: (v) => (vid = v),
       });
 
-      let switchInterval = 250 * 1000;
-      let lastSwitchTime = 0;
-      let lastPeakTime = 0;
-      let buffer = [];
-      let graphics;
-
-      let threshold = 10;
-      const offset = 2;
-
       async function setup() {
         pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
-        textAlign(CENTER, CENTER);
-
         graphics = createGraphics(windowWidth, windowHeight);
-        userStartAudio();
-
-        mic = new p5.AudioIn();
-        await mic.start();
-        fft = new p5.FFT(0.6, 256);
-        fft.setInput(mic);
+        fft = startMic().fft;
         await videos.load();
         background(0);
       }
 
-      function mousePressed(e) {
-        if (!VideoSource.clickedCanvas(e)) return;
-        switchVideo();
-        initializeAudioAndVideo();
-      }
-
-      let prevFrame;
-      let frameCounter = 0;
-
       function draw() {
         if (!vid || !vid.elt.readyState || vid.elt.paused) return;
 
-        let spectrum = fft.analyze();
-        let bassEnergy = fft.getEnergy("bass");
-        let peak = Math.max(...spectrum);
-        let peakIndex = spectrum.indexOf(peak);
+        fft.analyze();
+        const bpm = map(fft.getEnergy("bass"), 0, 255, 60, 180);
+        vid.speed(map(bpm, 60, 180, 0.1, 2));
 
-        let bpm = constrain(map(bassEnergy, 0, 255, 60, 180), 0, 180);
-        let speed = map(bpm, 60, 180, 0.1, 2);
-        vid.speed(speed);
-
-        if (peak > threshold && millis() - lastPeakTime > offset) {
-          lastPeakTime = millis();
-        }
-
-        if (millis() - lastSwitchTime > switchInterval) {
+        if (millis() - lastClear > CLEAR_MS) {
           background(0);
-          lastSwitchTime = millis();
+          lastClear = millis();
         }
 
-        const vW = windowWidth;
-        const vH = windowHeight;
-        if (vW === 0 || vH === 0) return;
+        if (frameCount % 2 !== 0) return;
 
-        frameCounter++;
+        const frame = vid.get(0, 0, width, height);
+        frame.filter(BLUR);
+        frame.loadPixels();
 
-        if (frameCounter % 2 !== 0) {
+        if (prevFrame) drawMotion(frame);
+        prevFrame = frame;
+      }
+
+      function drawMotion(frame) {
+        const cur = frame.pixels;
+        const prev = prevFrame.pixels;
+        const n = graphics.width * graphics.height;
+        if (cur.length < n * 4 || prev.length < n * 4) return;
+
+        const diffs = new Uint16Array(n);
+        let total = 0;
+        for (let i = 0; i < n; i++) {
+          const p = i * 4;
+          diffs[i] =
+            abs(cur[p] - prev[p]) +
+            abs(cur[p + 1] - prev[p + 1]) +
+            abs(cur[p + 2] - prev[p + 2]);
+          total += diffs[i];
+        }
+
+        if (total / n > DIFF_THRESHOLD) {
+          background(0, 0.5);
           return;
         }
 
-        let currentFrame = vid.get(0, 0, vW, vH);
-        // currentFrame.filter(GRAY);
-        currentFrame.filter(BLUR);
-
-        if (prevFrame) {
-          currentFrame.loadPixels();
-          prevFrame.loadPixels();
-
-          if (currentFrame.pixels.length > 0 && prevFrame.pixels.length > 0) {
-            let totalDiff = 0;
-            let numPixels = graphics.width * graphics.height;
-
-            for (let y = 0; y < graphics.height; y++) {
-              for (let x = 0; x < graphics.width; x++) {
-                let index = (x + y * graphics.width) * 4;
-
-                let r1 = currentFrame.pixels[index];
-                let g1 = currentFrame.pixels[index + 1];
-                let b1 = currentFrame.pixels[index + 2];
-
-                let r2 = prevFrame.pixels[index];
-                let g2 = prevFrame.pixels[index + 1];
-                let b2 = prevFrame.pixels[index + 2];
-
-                let diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2);
-                totalDiff += diff;
-              }
-            }
-
-            let averageDiff = totalDiff / numPixels;
-
-            if (averageDiff > 80) {
-              background(0, 0.5);
-            } else {
-              graphics.clear();
-              graphics.image(currentFrame, 0, 0);
-              graphics.loadPixels();
-
-              for (let y = 0; y < graphics.height; y++) {
-                for (let x = 0; x < graphics.width; x++) {
-                  let index = (x + y * graphics.width) * 4;
-
-                  let r1 = currentFrame.pixels[index];
-                  let g1 = currentFrame.pixels[index + 1];
-                  let b1 = currentFrame.pixels[index + 2];
-
-                  let r2 = prevFrame.pixels[index];
-                  let g2 = prevFrame.pixels[index + 1];
-                  let b2 = prevFrame.pixels[index + 2];
-
-                  let diff = abs(r1 - r2) + abs(g1 - g2) + abs(b1 - b2);
-
-                  // r1 = r1 + 50; // Boost red
-                  // g1 = g1 * 0.5; // Reduce green
-                  // b1 = b1 * 0.5; // Reduce blue
-
-                  if (diff > 80) {
-                    graphics.pixels[index + 3] = 255;
-                  } else {
-                    graphics.pixels[index + 3] = 0;
-                  }
-                }
-              }
-
-              graphics.updatePixels();
-
-              image(graphics, 0, 0);
-            }
-          }
-        }
-
-        prevFrame = currentFrame.get();
+        graphics.clear();
+        graphics.image(frame, 0, 0);
+        graphics.loadPixels();
+        for (let i = 0; i < n; i++)
+          graphics.pixels[i * 4 + 3] = diffs[i] > DIFF_THRESHOLD ? 255 : 0;
+        graphics.updatePixels();
+        image(graphics, 0, 0);
       }
 
-      function switchVideo() {
-        videos.next();
+      function mousePressed(e) {
+        if (VideoSource.clickedCanvas(e)) videos.next();
       }
 
       function windowResized() {
         resizeCanvas(windowWidth, windowHeight);
+        graphics.remove();
         graphics = createGraphics(windowWidth, windowHeight);
+        prevFrame = null;
         if (vid) vid.size(windowWidth, windowHeight);
       }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        document
-          .getElementById("threshold-slider")
-          .addEventListener("input", (event) => {
-            threshold = parseInt(event.target.value, 10);
-            document.getElementById("threshold-value").textContent = threshold;
-          });
-      });
     </script>
   </head>
 
-  <header>
-    <span id="controls">
-      <label for="threshold-slider" style="color: white"
-        >Threshold: <span id="threshold-value">150</span></label
-      >
-      <input
-        type="range"
-        id="threshold-slider"
-        min="10"
-        max="2000"
-        step="1"
-        value="150"
-      />
-    </span>
-  </header>
-
   <body></body>
-
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-
-    header {
-      background: black;
-      color: white;
-      padding: 10px 0;
-      position: absolute;
-      width: 100%;
-      opacity: 0;
-    }
-
-    header:hover {
-      opacity: 1;
-    }
-
-    header a {
-      margin: 0 10px;
-      color: white;
-      text-decoration: none;
-    }
-  </style>
 </html>
