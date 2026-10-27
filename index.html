@@ -7,7 +7,7 @@
     <style>
       body {
         margin: 0;
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -18,8 +18,29 @@
         font-size: 20px;
       }
 
-      h1 {
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+      }
+
+      h2 {
+        margin: 0 0 40px;
+        font-size: 14px;
         font-weight: normal;
+        color: #333;
+      }
+
+      .new h2 {
+        color: gainsboro;
+        animation: blink 1s steps(1) infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
       }
 
       nav a {
@@ -33,23 +54,26 @@
 
   <body>
     <nav>
-      <!-- <h1>Video</h1> -->
-      <a href="datamosh.html">Datamosh</a>
-      <a href="blob.html">Detection</a>
-      <a href="sakamoto.html">Sakamoto</a>
-      <!-- <a href="thresh.html">Thresh</a> -->
+      <section class="new">
+        <h2>New</h2>
+        <a href="sakamoto.html">Sakamoto</a>
+        <!-- <a href="flower.html">Flower</a> -->
+        <a href="datamosh.html">Datamosh</a>
+      </section>
 
-      <!-- <h1>Optical</h1> -->
-      <a href="moiree.html">Moiree</a>
-      <a href="bolo.html">Bolo</a>
-      <a href="text.html">Kein</a>
-      <a href="ribbon.html">Grignani</a>
-
-      <!-- <h1>Patterns</h1> -->
-      <a href="barcode.html">Barcode</a>
-      <a href="vol.html">Volume</a>
-      <a href="matrix.html">Matrix</a>
-      <a href="ascii.html">Ascii</a>
+      <section>
+        <h2>Old</h2>
+        <a href="blob.html">Detection</a>
+        <!-- <a href="thresh.html">Thresh</a> -->
+        <a href="moiree.html">Moiree</a>
+        <a href="bolo.html">Bolo</a>
+        <a href="text.html">Kein</a>
+        <a href="ribbon.html">Grignani</a>
+        <a href="barcode.html">Barcode</a>
+        <a href="vol.html">Volume</a>
+        <a href="matrix.html">Matrix</a>
+        <a href="ascii.html">Ascii</a>
+      </section>
     </nav>
   </body>
 </html>
