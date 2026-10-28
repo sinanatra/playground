@@ -19,18 +19,21 @@
         "media/sakamoto_8.jpg",
         "media/sakamoto_9.jpg",
       ];
+      const SIDES = ["left", "right", "top", "bottom"];
 
       const images = [];
       let index = 0;
       let scan = 0; // 0..1 across the screen
       let dir = 1;
       let sweepSeconds = 180;
+      let sides = ["left"]; // ticked edges, all drifting at once
 
       function setup() {
         pixelDensity(1);
         createCanvas(windowWidth, windowHeight);
         noSmooth(); // keep stretched pixels hard-edged
         bindRange("sweep", sweepSeconds, (v) => (sweepSeconds = v));
+        bindSides();
         load(index);
       }
 
@@ -80,37 +83,85 @@
           dir = 1;
         }
 
-        drawDrift(images[index], floor(min(scan * width, width - 1)));
+        drawDrift(images[index], scan);
       }
 
-      function drawDrift(img, x) {
+      function drawDrift(img, t) {
         const s = max(width / img.width, height / img.height);
         const sw = width / s;
         const sh = height / s;
         const sx = (img.width - sw) / 2;
         const sy = (img.height - sh) / 2;
+        const col = (x) => floor(constrain(sx + (x / width) * sw, 0, img.width - 1));
+        const row = (y) => floor(constrain(sy + (y / height) * sh, 0, img.height - 1));
+        const w = width;
+        const h = height;
 
-        image(img, 0, 0, width, height, sx, sy, sw, sh);
-        // one source column stretched from the left edge to the scan line
-        image(
-          img,
-          0,
-          0,
-          x + 1,
-          height,
-          floor(sx + (x / width) * sw),
-          sy,
-          1,
-          sh,
-        );
+        image(img, 0, 0, w, h, sx, sy, sw, sh);
+
+        // opposite edges meet in the middle, a lone edge crosses the whole screen
+        const on = Object.fromEntries(SIDES.map((s) => [s, sides.includes(s)]));
+        const spanX = t * (on.left && on.right ? w / 2 : w);
+        const spanY = t * (on.top && on.bottom ? h / 2 : h);
+
+        // inner rect still shows the image; each edge owns the band up to it
+        const L = on.left ? floor(min(spanX, w - 1)) : 0;
+        const R = on.right ? ceil(max(w - spanX, 1)) : w;
+        const T = on.top ? floor(min(spanY, h - 1)) : 0;
+        const B = on.bottom ? ceil(max(h - spanY, 1)) : h;
+
+        // corners split along the diagonal between two edges
+        if (on.left)
+          clipped([0, 0, L, T, L, B, 0, h], () =>
+            image(img, 0, 0, L + 1, h, col(L), sy, 1, sh),
+          );
+        if (on.right)
+          clipped([w, 0, R, T, R, B, w, h], () =>
+            image(img, R - 1, 0, w - R + 1, h, col(R - 1), sy, 1, sh),
+          );
+        if (on.top)
+          clipped([0, 0, w, 0, R, T, L, T], () =>
+            image(img, 0, 0, w, T + 1, sx, row(T), sw, 1),
+          );
+        if (on.bottom)
+          clipped([0, h, w, h, R, B, L, B], () =>
+            image(img, 0, B - 1, w, h - B + 1, sx, row(B - 1), sw, 1),
+          );
+      }
+
+      function clipped(points, drawFn) {
+        const ctx = drawingContext;
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < points.length; i += 2)
+          ctx.lineTo(points[i], points[i + 1]);
+        ctx.clip();
+        drawFn();
+        ctx.restore();
+      }
+
+      function restart() {
+        scan = 0;
+        dir = 1;
+      }
+
+      function bindSides() {
+        const read = () =>
+          (sides = SIDES.filter((s) => document.getElementById(`side-${s}`).checked));
+        for (const s of SIDES)
+          document.getElementById(`side-${s}`).addEventListener("change", () => {
+            read();
+            restart();
+          });
+        read();
       }
 
       function mousePressed(e) {
         if (e && e.target && e.target.tagName !== "CANVAS") return;
-        index = nextIndex();
-        load(index);
-        scan = 0;
-        dir = 1;
+        const i = nextIndex();
+        load(i);
+        if (images[i]) index = i;
+        restart();
       }
 
       function windowResized() {
@@ -123,6 +174,11 @@
     <header>
       <label for="sweep-slider">Sweep: <span id="sweep-value"></span>s</label>
       <input type="range" id="sweep-slider" min="5" max="300" step="1" />
+
+      <label><input type="checkbox" id="side-left" checked />Left</label>
+      <label><input type="checkbox" id="side-right" />Right</label>
+      <label><input type="checkbox" id="side-top" />Top</label>
+      <label><input type="checkbox" id="side-bottom" />Bottom</label>
     </header>
   </body>
 </html>
